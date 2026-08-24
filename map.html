@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html lang="en-AU">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Orbit map : Virtual Solar Swarm</title>
+<meta name="description" content="Animated map of all 200 Virtual Solar Swarm targets, positioned by real orbital elements.">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🛰️</text></svg>">
+<link rel="stylesheet" href="assets/style.css">
+</head>
+<body>
+<header id="site-header"></header>
+<main>
+  <h1>Orbit map</h1>
+  <p class="lede">Every heliocentric target, placed by its real orbital elements and moved by Kepler's laws. Moons ride with their parents; open a dossier to see them. The compressed scale keeps Mercury and Sedna on one screen, so remember the real gaps are far larger than they look.</p>
+
+  <div class="controls">
+    <label>Time
+      <select id="speed">
+        <option value="0">paused</option>
+        <option value="5">days</option>
+        <option value="60" selected>months</option>
+        <option value="720">years</option>
+        <option value="7200">decades</option>
+      </select>
+    </label>
+    <label>Scale
+      <select id="scale">
+        <option value="log" selected>compressed (see everything)</option>
+        <option value="lin40">true, out to Neptune</option>
+        <option value="lin6">true, inner system</option>
+      </select>
+    </label>
+    <button id="today">Jump to today</button>
+    <span class="faint">Click a dot for its dossier. Date: <strong id="date-out"></strong></span>
+  </div>
+
+  <div class="canvas-wrap">
+    <canvas id="cv" width="1160" height="760"></canvas>
+    <div class="canvas-hud" id="hud">hover a dot…</div>
+  </div>
+
+  <div class="chip-row" id="legend"></div>
+  <div class="card" id="pick" style="display:none"></div>
+</main>
+<footer id="site-footer"></footer>
+<script src="assets/astro.js"></script>
+<script src="data/objects-core.js"></script>
+<script src="data/objects-moons.js"></script>
+<script src="data/objects-asteroids.js"></script>
+<script src="data/objects-comets.js"></script>
+<script src="data/objects-tnos.js"></script>
+<script src="data/objects.js"></script>
+<script src="data/sensors.js"></script>
+<script src="data/buses.js"></script>
+<script src="assets/core.js"></script>
+<script>
+VSS.mountChrome("map.html");
+(function () {
+  var A = window.ASTRO;
+  var cv = document.getElementById("cv"), ctx = cv.getContext("2d");
+  var W = cv.width, H = cv.height, CX = W / 2, CY = H / 2;
+
+  var bodies = window.VSS_OBJECTS.filter(function (o) {
+    return !o.parent && o.orbit && !o.orbit.hyperbolic;
+  });
+  var tierColour = { observatory: "#f0b429", swarm: "#38bdf8", enhanced: "#a78bfa", picket: "#7e8ca6", intercept: "#fb7185" };
+
+  var mode = "log";
+  function rScale(rAU) {
+    if (mode === "lin40") return rAU * (Math.min(CX, CY) - 20) / 40;
+    if (mode === "lin6") return rAU * (Math.min(CX, CY) - 20) / 6;
+    return Math.log10(1 + rAU * 3) * (Math.min(CX, CY) - 20) / Math.log10(1 + 90 * 3);
+  }
+  function project(p) {
+    var r = Math.sqrt(p.x * p.x + p.y * p.y);
+    if (r < 1e-9) return { x: CX, y: CY };
+    var s = rScale(r) / r;
+    return { x: CX + p.x * s, y: CY - p.y * s };
+  }
+
+  // pre-sample orbit paths per scale mode
+  var pathCache = {};
+  function pathsFor(m) {
+    if (pathCache[m]) return pathCache[m];
+    var out = bodies.map(function (o) {
+      var P = A.periodYearsOf(o.orbit) * 365.25;
+      var pts = [];
+      for (var k = 0; k <= 128; k++) {
+        var fake = { aAU: o.orbit.aAU, e: o.orbit.e, iDeg: o.orbit.iDeg, omDeg: o.orbit.omDeg, wDeg: o.orbit.wDeg, M0Deg: (k / 128) * 360, periodYears: 1e9 };
+        pts.push(project(A.helioPos(fake, 0)));
+      }
+      var path = new Path2D();
+      pts.forEach(function (p, idx) { idx ? path.lineTo(p.x, p.y) : path.moveTo(p.x, p.y); });
+      return path;
+    });
+    pathCache[m] = out;
+    return out;
+  }
+
+  var tDays = A.daysSinceJ2000(new Date());
+  var speed = 60; // days per second
+  var dots = [];
+  var picked = null;
+
+  function draw() {
+    ctx.clearRect(0, 0, W, H);
+    // faint star field
+    ctx.fillStyle = "rgba(220,229,245,.07)";
+    for (var s = 0; s < 90; s++) {
+      var sx = (s * 971) % W, sy = (s * 613) % H;
+      ctx.fillRect(sx, sy, 1, 1);
+    }
+    var paths = pathsFor(mode);
+    bodies.forEach(function (o, i) {
+      var major = o.cls === "planet" || o.cls === "dwarf";
+      ctx.strokeStyle = major ? "rgba(140,155,184,.35)" : "rgba(140,155,184,.10)";
+      ctx.lineWidth = 1;
+      ctx.stroke(paths[i]);
+    });
+    // Sun
+    ctx.fillStyle = "#f0b429";
+    ctx.beginPath(); ctx.arc(CX, CY, 5, 0, 7); ctx.fill();
+    ctx.fillStyle = "rgba(240,180,41,.2)";
+    ctx.beginPath(); ctx.arc(CX, CY, 9, 0, 7); ctx.fill();
+
+    dots = [{ o: window.VSS_BY_ID.sun, x: CX, y: CY }];
+    bodies.forEach(function (o) {
+      var p = project(A.helioPos(o.orbit, tDays));
+      var major = o.cls === "planet";
+      ctx.fillStyle = tierColour[o.tier] || "#7e8ca6";
+      ctx.beginPath(); ctx.arc(p.x, p.y, major ? 4 : 2.2, 0, 7); ctx.fill();
+      if (major || o.id === "pluto") {
+        ctx.fillStyle = "rgba(220,229,245,.75)";
+        ctx.font = "11px system-ui, sans-serif";
+        ctx.fillText(o.name, p.x + 6, p.y - 5);
+      }
+      if (picked === o.id) {
+        ctx.strokeStyle = "#4cc9f0"; ctx.lineWidth = 1.5;
+        ctx.beginPath(); ctx.arc(p.x, p.y, 8, 0, 7); ctx.stroke();
+      }
+      dots.push({ o: o, x: p.x, y: p.y });
+    });
+    document.getElementById("date-out").textContent =
+      A.dateFromDays(tDays).toLocaleDateString("en-AU", { day: "numeric", month: "short", year: "numeric" });
+  }
+
+  var last = performance.now();
+  function tick(now) {
+    var dt = (now - last) / 1000; last = now;
+    if (speed > 0) { tDays += speed * dt; draw(); }
+    requestAnimationFrame(tick);
+  }
+  draw();
+  requestAnimationFrame(tick);
+
+  document.getElementById("speed").addEventListener("change", function (e) { speed = +e.target.value; });
+  document.getElementById("scale").addEventListener("change", function (e) { mode = e.target.value; draw(); });
+  document.getElementById("today").addEventListener("click", function () { tDays = A.daysSinceJ2000(new Date()); draw(); });
+
+  function nearest(ev) {
+    var rect = cv.getBoundingClientRect();
+    var mx = (ev.clientX - rect.left) * (W / rect.width);
+    var my = (ev.clientY - rect.top) * (H / rect.height);
+    var best = null, bd = 14 * 14;
+    dots.forEach(function (d) {
+      var dx = d.x - mx, dy = d.y - my, dd = dx * dx + dy * dy;
+      if (dd < bd) { bd = dd; best = d; }
+    });
+    return best;
+  }
+  cv.addEventListener("mousemove", function (ev) {
+    var b = nearest(ev);
+    document.getElementById("hud").textContent = b
+      ? b.o.name + " · " + (VSS.CLS_LABEL[b.o.cls] || b.o.cls) + (b.o.orbit && b.o.orbit.aAU ? " · " + VSS.fmt(b.o.orbit.aAU, 1) + " AU" : "")
+      : "hover a dot…";
+    cv.style.cursor = b ? "pointer" : "default";
+  });
+  cv.addEventListener("click", function (ev) {
+    var b = nearest(ev);
+    var box = document.getElementById("pick");
+    if (!b) { picked = null; box.style.display = "none"; draw(); return; }
+    picked = b.o.id;
+    box.style.display = "";
+    box.innerHTML = "<h3>" + b.o.name + '</h3><p class="dim small">' + (b.o.why || "") + "</p>" +
+      '<p class="small"><span class="badge t-' + b.o.tier + '">' + VSS.TIERS[b.o.tier].label + "</span> &nbsp; " +
+      '<a href="object.html?id=' + b.o.id + '">Open dossier →</a></p>';
+    draw();
+  });
+
+  // legend
+  document.getElementById("legend").innerHTML = Object.keys(tierColour).map(function (t) {
+    return '<span class="chip" style="cursor:default"><span class="dot" style="background:' + tierColour[t] + '"></span>' + VSS.TIERS[t].label + "</span>";
+  }).join("") + '<span class="chip" style="cursor:default"><span class="dot" style="background:#f0b429"></span>the Sun</span>';
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="en-AU">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Replacement cadence : Virtual Solar Swarm</title>
+<meta name="description" content="Model of the replacement drumbeat that keeps a 1,300-satellite solar system fleet whole: design lives, transit lead times and factory pace.">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🛰️</text></svg>">
+<link rel="stylesheet" href="assets/style.css">
+</head>
+<body>
+<header id="site-header"></header>
+<main>
+  <h1>Replacement cadence</h1>
+  <p class="lede">A fleet this size is never finished; it is a garden that needs constant replanting. Electronics wear out, radiation bites, nuclear batteries fade. This page models the drumbeat: how many satellites die each year, and how fast the factory line has to run so no picket ever goes dark.</p>
+
+  <div class="callout">Each environment sets its own life expectancy. Six years inside Jupiter's radiation belts; twenty-five in the calm cold beyond Neptune, where the limit is the slow fade of nuclear power, not damage. And because the cruise to a far target takes years, its replacement must launch <em>before</em> the failure it answers: the factory always builds for the fleet as it will be, not as it is.</div>
+
+  <h2>The dials</h2>
+  <div class="grid cols-2">
+    <div class="card">
+      <p><label>Build quality <input type="range" id="q" min="50" max="200" value="100"></label> <strong id="q-out">1.0×</strong> design life</p>
+      <p class="faint">Slide right to imagine tougher satellites; every step stretches each environment's life expectancy.</p>
+    </div>
+    <div class="card">
+      <p><label>Factory pace <input type="range" id="cap" min="20" max="400" value="150"></label> <strong id="cap-out">150</strong> satellites a year</p>
+      <p class="faint" id="cap-note"></p>
+    </div>
+  </div>
+
+  <div class="grid cols-3">
+    <div class="card"><div class="stat" id="s-yr">·</div><div class="stat-label">replacements needed / year</div></div>
+    <div class="card"><div class="stat" id="s-rhythm">·</div><div class="stat-label">launch rhythm</div></div>
+    <div class="card"><div class="stat" id="s-transit">·</div><div class="stat-label">always in transit</div></div>
+  </div>
+  <p id="verdict-line"></p>
+
+  <h2>Where the attrition happens</h2>
+  <div class="table-wrap">
+    <table><thead><tr><th>Environment</th><th class="num">Satellites</th><th class="num">Design life</th><th class="num">Losses / year</th><th>Share of the drumbeat</th></tr></thead>
+    <tbody id="env-rows"></tbody></table>
+  </div>
+
+  <h2>Getting to steady state</h2>
+  <p class="dim small">The source design deploys in three rings over nine years, inner value first. Replacement begins before deployment ends: by the time the outer pickets launch, the first solar observatory satellites are already due for renewal.</p>
+  <div class="grid cols-3">
+    <div class="card"><h3>Years 0 to 2 · Helios</h3><p class="dim small">The solar observatory goes first: a hundred watchers around the Sun, because space weather warnings would pay the whole idea's way early.</p></div>
+    <div class="card"><h3>Years 2 to 5 · Inner ring</h3><p class="dim small">Pickets to every inner world and the main belt; dense swarms build out at Venus and Mars while windows recur every couple of years.</p></div>
+    <div class="card"><h3>Years 5 to 9 · Outer ring</h3><p class="dim small">The long hauls: giants, ice worlds and the deep dark. These launches spend years in cruise, so their replacement clocks start ticking before they even arrive.</p></div>
+  </div>
+</main>
+<footer id="site-footer"></footer>
+<script src="assets/astro.js"></script>
+<script src="data/objects-core.js"></script>
+<script src="data/objects-moons.js"></script>
+<script src="data/objects-asteroids.js"></script>
+<script src="data/objects-comets.js"></script>
+<script src="data/objects-tnos.js"></script>
+<script src="data/objects.js"></script>
+<script src="data/sensors.js"></script>
+<script src="data/buses.js"></script>
+<script src="assets/core.js"></script>
+<script>
+VSS.mountChrome("cadence.html");
+(function () {
+  var A = window.ASTRO;
+  var earth = window.VSS_BY_ID.earth.orbit;
+
+  function transitYears(o) {
+    if (o.cls === "star") return 0.3;
+    if (o.id === "earth" || o.parent === "earth") return 0.1;
+    if (o.cls === "interstellar") return 0;
+    var ho = VSS.helioOrbitOf(o);
+    if (ho.e > 0.85) return 4; // stretched orbits are met inbound near perihelion
+    // deep targets would fly fast paths, not the ferry route; cap the cruise at a generation
+    return Math.min(A.hohmann(earth.aAU, ho.aAU).tofYears, 25);
+  }
+  window.VSS_OBJECTS.forEach(function (o) { o._transit = transitYears(o); });
+
+  function recompute() {
+    var qMul = document.getElementById("q").value / 100;
+    var cap = +document.getElementById("cap").value;
+    document.getElementById("q-out").textContent = qMul.toFixed(1) + "×";
+    document.getElementById("cap-out").textContent = cap;
+
+    var perYear = 0, inTransit = 0;
+    var env = {};
+    window.VSS_OBJECTS.forEach(function (o) {
+      var life = VSS.DESIGN_LIFE[o.env];
+      if (!life) return; // interceptors are stock, not cadence
+      life *= qMul;
+      var sats = VSS.tierCount(o);
+      var r = sats / life;
+      perYear += r;
+      inTransit += r * o._transit;
+      env[o.env] = env[o.env] || { sats: 0, rate: 0, life: life };
+      env[o.env].sats += sats; env[o.env].rate += r; env[o.env].life = life;
+    });
+
+    document.getElementById("s-yr").textContent = VSS.fmt(perYear, 0);
+    document.getElementById("s-rhythm").textContent = "every " + VSS.fmt(365 / perYear, 1) + " days";
+    document.getElementById("s-transit").textContent = VSS.fmt(inTransit, 0) + " satellites";
+    document.getElementById("cap-note").textContent =
+      "For scale: one proven mass-production line has managed several satellites a day for simpler craft, so " + cap + " a year of science-grade builds is deliberately modest.";
+
+    var vl = document.getElementById("verdict-line");
+    if (cap >= perYear * 1.2) {
+      vl.innerHTML = '<span class="verdict ok">✓ The line keeps up.</span> <span class="dim">Capacity ' + cap + " a year against " + VSS.fmt(perYear, 0) + " needed leaves headroom for growth and losses beyond plan.</span>";
+    } else if (cap >= perYear) {
+      vl.innerHTML = '<span class="verdict warn">△ Knife edge.</span> <span class="dim">Capacity barely covers steady-state replacement; one bad solar storm or a factory stoppage and pickets start going dark.</span>';
+    } else {
+      vl.innerHTML = '<span class="verdict bad">✕ The fleet shrinks.</span> <span class="dim">At ' + cap + " a year against " + VSS.fmt(perYear, 0) + " needed, the network loses about " + VSS.fmt(perYear - cap, 0) + " stations' worth of coverage every year.</span>";
+    }
+
+    var order = ["solar", "scorch", "inner", "belt", "radiation", "outer", "deep"];
+    document.getElementById("env-rows").innerHTML = order.filter(function (k) { return env[k]; }).map(function (k) {
+      var e = env[k], pct = e.rate / perYear * 100;
+      return "<tr><td class='wrap'>" + VSS.ENV_LABEL[k] + "</td><td class='num'>" + VSS.fmt(e.sats) + "</td>" +
+        "<td class='num'>" + VSS.fmt(e.life, 1) + " yr</td><td class='num'>" + VSS.fmt(e.rate, 1) + "</td>" +
+        '<td style="min-width:150px"><div class="meter" style="width:140px"><i style="width:' + pct + '%"></i></div></td></tr>';
+    }).join("");
+  }
+
+  document.getElementById("q").addEventListener("input", recompute);
+  document.getElementById("cap").addEventListener("input", recompute);
+  recompute();
+})();
+</script>
+</body>
+</html>

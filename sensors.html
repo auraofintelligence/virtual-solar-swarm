@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="en-AU">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Instruments : Virtual Solar Swarm</title>
+<meta name="description" content="The modular instrument kit-of-parts for the Virtual Solar Swarm, each explained in plain words, with recommended fit-outs by target class.">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🛰️</text></svg>">
+<link rel="stylesheet" href="assets/style.css">
+</head>
+<body>
+<header id="site-header"></header>
+<main>
+  <h1>The instrument kit of parts</h1>
+  <p class="lede">The study does not design 200 unique spacecraft. It designs fifteen instrument modules that snap together in different mixes, the way one set of Lego bricks builds many models. Costs shown are mass-production targets around unit 1,000 of a run, converted at 1 USD to A$1.55 (August 2026 indicative rate).</p>
+
+  <div class="grid cols-3" id="cards"></div>
+
+  <h2>Recommended fit-out by target class</h2>
+  <p class="dim small">A tick means the module flies on that class of target. The mixes come from asking one question per world: what is the thing only being <em>there</em> can measure?</p>
+  <div class="table-wrap"><table id="matrix"></table></div>
+
+  <p class="small">Try a mix yourself in the <a href="builder.html">satellite builder</a>.</p>
+</main>
+<footer id="site-footer"></footer>
+<script src="assets/astro.js"></script>
+<script src="data/objects-core.js"></script>
+<script src="data/objects-moons.js"></script>
+<script src="data/objects-asteroids.js"></script>
+<script src="data/objects-comets.js"></script>
+<script src="data/objects-tnos.js"></script>
+<script src="data/objects.js"></script>
+<script src="data/sensors.js"></script>
+<script src="data/buses.js"></script>
+<script src="assets/core.js"></script>
+<script>
+VSS.mountChrome("sensors.html");
+(function () {
+  document.getElementById("cards").innerHTML = window.VSS_SENSORS.map(function (s) {
+    return '<div class="card"><h3>' + s.name + "</h3>" +
+      '<p class="dim small">' + s.gloss + "</p>" +
+      '<p class="faint">' + s.massKg + " kg · " + s.powerW + " W · " +
+      (s.dataMbps >= 1 ? s.dataMbps + " Mbps · " : "") + VSS.fmtAudFull(s.costUsdM) + "</p></div>";
+  }).join("");
+
+  var kitNames = {
+    star: "The Sun", planet: "Rocky planets", gasgiant: "Gas and ice giants", icymoon: "Icy moons",
+    smallmoon: "Small moons", asteroid: "Asteroids", comet: "Comets and centaurs",
+    distant: "Dwarfs and TNOs", interstellar: "Interstellar visitors"
+  };
+  var keys = Object.keys(window.VSS_KITS);
+  var head = "<thead><tr><th>Module</th>" + keys.map(function (k) { return "<th>" + kitNames[k] + "</th>"; }).join("") + "</tr></thead>";
+  var body = "<tbody>" + window.VSS_SENSORS.map(function (s) {
+    return "<tr><td>" + s.name + "</td>" + keys.map(function (k) {
+      return '<td style="text-align:center">' + (window.VSS_KITS[k].indexOf(s.id) >= 0 ? '<span class="verdict ok">✓</span>' : '<span class="faint">·</span>') + "</td>";
+    }).join("") + "</tr>";
+  }).join("") + "</tbody>";
+  document.getElementById("matrix").innerHTML = head + body;
+})();
+</script>
+</body>
+</html>

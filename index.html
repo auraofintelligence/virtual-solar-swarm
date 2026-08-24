@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="en-AU">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Virtual Solar Swarm : mission design studio</title>
+<meta name="description" content="An interactive studio for designing a solar-system-wide satellite swarm: 200 targets, their orbits, stable orbits around them, launch windows and replacement cadence.">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🛰️</text></svg>">
+<link rel="stylesheet" href="assets/style.css">
+</head>
+<body>
+<header id="site-header"></header>
+<main>
+  <h1>Design the swarm that would watch the whole solar system</h1>
+  <p class="lede">This studio models a single idea: put a small standing crew of satellites around each of the 200 most interesting objects in the solar system, so nothing out there ever goes unwatched again. Every page is a working model you can pull on.</p>
+
+  <div class="callout warm">
+    This is a design study, not a mission. Nothing on this site has been built or launched. The maths is teaching-grade two-body mechanics: right enough to compare options and plan shapes, not to fly a spacecraft. The <a href="about.html">about page</a> lists every approximation.
+  </div>
+
+  <h2>The idea in one breath</h2>
+  <p>Two hundred targets, about the number of countries on Earth. Around each one, a baseline picket of four satellites: one over each pole, one over each side, so the body is seen from all angles at once. Busy worlds like Mars and Titan would get dense swarms of fifty. The Sun would get a hundred, wrapped right around it, so a solar storm could never again leave from the side we cannot see. All up the model builds a fleet of around 1,300 spacecraft, and every one of them eventually wears out, which is why replacement cadence gets its own page.</p>
+
+  <div class="grid cols-4" id="live-stats">
+    <div class="card"><div class="stat" id="stat-objects">…</div><div class="stat-label">catalogued targets</div></div>
+    <div class="card"><div class="stat" id="stat-fleet">…</div><div class="stat-label">satellites at default tiers</div></div>
+    <div class="card"><div class="stat" id="stat-moons">…</div><div class="stat-label">moons in the catalogue</div></div>
+    <div class="card"><div class="stat" id="stat-span">…</div><div class="stat-label">span, Sun to farthest target</div></div>
+  </div>
+
+  <h2>The tools</h2>
+  <div class="grid cols-3">
+    <div class="card link-card"><a class="cover" href="targets.html"><h3>The 200</h3><p class="dim small">The full target catalogue: planets, moons, asteroids, comets, ice worlds and three interstellar visitors. Search it, sort it, argue with it.</p></a></div>
+    <div class="card link-card"><a class="cover" href="map.html"><h3>Orbit map</h3><p class="dim small">Every heliocentric target on one animated map, positioned by real orbital elements. Scrub time forwards and back.</p></a></div>
+    <div class="card link-card"><a class="cover" href="orbit-lab.html"><h3>Orbit lab</h3><p class="dim small">Pick a body and design a stable orbit around it: how low is safe, how high is stable, and what a lap takes.</p></a></div>
+    <div class="card link-card"><a class="cover" href="windows.html"><h3>Launch windows</h3><p class="dim small">When the doors open. Transfer times, speed changes and the next departure dates for any target.</p></a></div>
+    <div class="card link-card"><a class="cover" href="builder.html"><h3>Satellite builder</h3><p class="dim small">Fit a bus with instruments, watch the mass, power and cost budgets move, and see whether your design survives its destination.</p></a></div>
+    <div class="card link-card"><a class="cover" href="sensors.html"><h3>Instruments</h3><p class="dim small">The kit of parts: fifteen modular instruments, each explained in plain words, with the recommended fit-out for every target class.</p></a></div>
+    <div class="card link-card"><a class="cover" href="fleet.html"><h3>Fleet</h3><p class="dim small">How 1,300 satellites spread across 200 targets. Drag the tier dials and watch the whole fleet re-total.</p></a></div>
+    <div class="card link-card"><a class="cover" href="cadence.html"><h3>Replacement cadence</h3><p class="dim small">Satellites die. This page models how fast, and what the factory line would need to produce to keep every picket whole.</p></a></div>
+    <div class="card link-card"><a class="cover" href="about.html"><h3>About</h3><p class="dim small">What this is, what it leans on, every approximation named, and the licence.</p></a></div>
+  </div>
+
+  <h2>How a mission threads through</h2>
+  <p class="dim">The tools chain together. Pick a target from <a href="targets.html">the 200</a>, and its dossier hands you onward: the <a href="windows.html">next launch window</a> to get there, a <a href="orbit-lab.html">stable orbit</a> to park in, a <a href="builder.html">satellite build</a> that suits the destination, and the <a href="cadence.html">replacement drumbeat</a> that keeps its picket alive. Try <a href="object.html?id=enceladus">Enceladus</a>, <a href="object.html?id=psyche">Psyche</a> or <a href="object.html?id=sedna">Sedna</a> to see a full dossier.</p>
+</main>
+<footer id="site-footer"></footer>
+<script src="assets/astro.js"></script>
+<script src="data/objects-core.js"></script>
+<script src="data/objects-moons.js"></script>
+<script src="data/objects-asteroids.js"></script>
+<script src="data/objects-comets.js"></script>
+<script src="data/objects-tnos.js"></script>
+<script src="data/objects.js"></script>
+<script src="data/sensors.js"></script>
+<script src="data/buses.js"></script>
+<script src="assets/core.js"></script>
+<script>
+VSS.mountChrome("index.html");
+(function () {
+  var objs = window.VSS_OBJECTS || [];
+  document.getElementById("stat-objects").textContent = VSS.fmt(objs.length);
+  var fleet = 0, moons = 0, farA = 0;
+  objs.forEach(function (o) {
+    fleet += VSS.tierCount(o);
+    if (o.cls === "moon") moons++;
+    var ho = VSS.helioOrbitOf(o);
+    if (ho && !ho.hyperbolic && o.cls !== "comet" && ho.aAU > farA) farA = ho.aAU;
+  });
+  document.getElementById("stat-fleet").textContent = VSS.fmt(fleet);
+  document.getElementById("stat-moons").textContent = VSS.fmt(moons);
+  document.getElementById("stat-span").textContent = VSS.fmt(farA) + " AU";
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="en-AU">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Fleet : Virtual Solar Swarm</title>
+<meta name="description" content="How the Virtual Solar Swarm fleet spreads across 200 targets, with adjustable tier sizes and live cost totals.">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🛰️</text></svg>">
+<link rel="stylesheet" href="assets/style.css">
+</head>
+<body>
+<header id="site-header"></header>
+<main>
+  <h1>The fleet</h1>
+  <p class="lede">Five tiers of attention, from a hundred satellites wrapped around the Sun down to a pair of interceptors waiting for the next interstellar visitor. Drag the dials and watch the whole fleet re-total. The source design sketches 1,500 to 2,000 spacecraft; the defaults here build about 1,300, and the dials show what it costs to close that gap.</p>
+
+  <h2>Tier dials</h2>
+  <div class="grid cols-3" id="dials"></div>
+
+  <div class="grid cols-3">
+    <div class="card"><div class="stat" id="t-fleet">·</div><div class="stat-label">satellites all up</div></div>
+    <div class="card"><div class="stat" id="t-cost">·</div><div class="stat-label">fleet hardware cost</div></div>
+    <div class="card"><div class="stat" id="t-perday">·</div><div class="stat-label">to deploy in 9 years</div></div>
+  </div>
+  <p class="faint">Hardware cost uses each target's recommended bus and instrument fit at mass-production prices, converted at 1 USD to A$1.55 (August 2026). Launch, operations and ground stations are not in this number.</p>
+
+  <h2>Where the satellites go</h2>
+  <div class="table-wrap">
+    <table><thead><tr><th>Neighbourhood</th><th class="num">Targets</th><th class="num">Satellites</th><th class="num">Hardware cost</th><th>Share</th></tr></thead>
+    <tbody id="rows"></tbody></table>
+  </div>
+</main>
+<footer id="site-footer"></footer>
+<script src="assets/astro.js"></script>
+<script src="data/objects-core.js"></script>
+<script src="data/objects-moons.js"></script>
+<script src="data/objects-asteroids.js"></script>
+<script src="data/objects-comets.js"></script>
+<script src="data/objects-tnos.js"></script>
+<script src="data/objects.js"></script>
+<script src="data/sensors.js"></script>
+<script src="data/buses.js"></script>
+<script src="assets/core.js"></script>
+<script>
+VSS.mountChrome("fleet.html");
+(function () {
+  var sizes = {};
+  Object.keys(VSS.TIERS).forEach(function (t) { sizes[t] = VSS.TIERS[t].n; });
+  var ranges = { observatory: [20, 150], swarm: [10, 80], enhanced: [4, 30], picket: [2, 12], intercept: [0, 6] };
+
+  function satCost(o) {
+    var kit = window.VSS_KITS[window.VSS_KIT_OF(o)] || [];
+    var cost = window.VSS_SENSORS.reduce(function (a, s) { return a + (kit.indexOf(s.id) >= 0 ? s.costUsdM : 0); }, 0);
+    var bus = window.VSS_BUSES.filter(function (b) { return b.id === window.VSS_BUS_OF(o); })[0];
+    return cost + bus.costUsdM;
+  }
+  window.VSS_OBJECTS.forEach(function (o) { o._satCost = satCost(o); });
+
+  var dials = document.getElementById("dials");
+  dials.innerHTML = Object.keys(VSS.TIERS).map(function (t) {
+    var m = VSS.TIERS[t], r = ranges[t];
+    var count = window.VSS_OBJECTS.filter(function (o) { return o.tier === t; }).length;
+    return '<div class="card"><h3><span class="badge t-' + t + '">' + m.label + "</span></h3>" +
+      '<p class="faint">' + count + " target" + (count === 1 ? "" : "s") + " in this tier</p>" +
+      '<p><input type="range" id="dial-' + t + '" min="' + r[0] + '" max="' + r[1] + '" value="' + sizes[t] + '"> ' +
+      '<strong id="val-' + t + '">' + sizes[t] + "</strong> satellites each</p></div>";
+  }).join("");
+
+  function recompute() {
+    var fleet = 0, cost = 0;
+    var hood = {};
+    window.VSS_OBJECTS.forEach(function (o) {
+      var n = sizes[o.tier];
+      fleet += n; cost += n * o._satCost;
+      var g = o.group;
+      hood[g] = hood[g] || { targets: 0, sats: 0, cost: 0 };
+      hood[g].targets++; hood[g].sats += n; hood[g].cost += n * o._satCost;
+    });
+    document.getElementById("t-fleet").textContent = VSS.fmt(fleet);
+    document.getElementById("t-cost").textContent = "A$" + VSS.fmt(cost * VSS.AUD_PER_USD / 1000, 1) + "b";
+    document.getElementById("t-perday").textContent = VSS.fmt(fleet / (9 * 52), 1) + " / week";
+    var names = Object.keys(hood).sort(function (a, b) { return hood[b].sats - hood[a].sats; });
+    document.getElementById("rows").innerHTML = names.map(function (g) {
+      var h = hood[g];
+      var pct = (h.sats / fleet * 100);
+      return "<tr><td>" + g + "</td><td class='num'>" + h.targets + "</td><td class='num'>" + VSS.fmt(h.sats) + "</td>" +
+        "<td class='num'>A$" + VSS.fmt(h.cost * VSS.AUD_PER_USD / 1000, 2) + "b</td>" +
+        '<td style="min-width:140px"><div class="meter" style="width:130px"><i style="width:' + pct + '%"></i></div></td></tr>';
+    }).join("");
+  }
+
+  Object.keys(VSS.TIERS).forEach(function (t) {
+    document.getElementById("dial-" + t).addEventListener("input", function (e) {
+      sizes[t] = +e.target.value;
+      document.getElementById("val-" + t).textContent = e.target.value;
+      recompute();
+    });
+  });
+  recompute();
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="en-AU">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Target dossier : Virtual Solar Swarm</title>
+<meta name="description" content="Full mission dossier for one Virtual Solar Swarm target: orbit, stable orbits, launch windows, sensor fit-out and replacement cadence.">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🛰️</text></svg>">
+<link rel="stylesheet" href="assets/style.css">
+</head>
+<body>
+<header id="site-header"></header>
+<main id="page"></main>
+<footer id="site-footer"></footer>
+<script src="assets/astro.js"></script>
+<script src="data/objects-core.js"></script>
+<script src="data/objects-moons.js"></script>
+<script src="data/objects-asteroids.js"></script>
+<script src="data/objects-comets.js"></script>
+<script src="data/objects-tnos.js"></script>
+<script src="data/objects.js"></script>
+<script src="data/sensors.js"></script>
+<script src="data/buses.js"></script>
+<script src="assets/core.js"></script>
+<script>
+VSS.mountChrome("targets.html");
+(function () {
+  var id = VSS.qs("id") || "enceladus";
+  var o = window.VSS_BY_ID[id];
+  var page = document.getElementById("page");
+  if (!o) {
+    page.innerHTML = "<h1>No such target</h1><p>That id is not in the catalogue. Back to <a href='targets.html'>the 200</a>.</p>";
+    return;
+  }
+  document.title = o.name + " : Virtual Solar Swarm";
+
+  var A = window.ASTRO;
+  var parent = o.parent ? window.VSS_BY_ID[o.parent] : null;
+  var ho = VSS.helioOrbitOf(o);
+  var isSun = o.cls === "star";
+  var isEarth = o.id === "earth";
+  var isInterstellar = o.cls === "interstellar";
+  var sats = VSS.tierCount(o);
+  var life = VSS.DESIGN_LIFE[o.env];
+
+  var gm = A.gmOf(o);
+  var massNote = o.massKg ? "" : " (estimated from size)";
+
+  // ----- fast facts -----
+  var distLine;
+  if (isSun) distLine = "0 AU, the centre of it all";
+  else if (isInterstellar) distLine = "passing through; closest approach " + VSS.fmt(o.orbit.qAU, 2) + " AU from the Sun";
+  else if (parent) distLine = VSS.fmt(o.orbit.aKm >= 1e6 ? o.orbit.aKm / 1e6 : o.orbit.aKm, o.orbit.aKm >= 1e6 ? 2 : 0) + (o.orbit.aKm >= 1e6 ? " million km" : " km") + " from " + parent.name + ", which rides at " + VSS.fmt(ho.aAU, 2) + " AU";
+  else distLine = VSS.fmt(ho.aAU, ho.aAU < 10 ? 2 : 1) + " AU from the Sun";
+
+  var periodLine;
+  if (isSun) periodLine = "spins in about 25 days at its equator";
+  else if (isInterstellar) periodLine = "never coming back; its path is a one-way curve";
+  else if (parent) periodLine = "laps " + parent.name + " every " + VSS.fmt(o.orbit.periodDays, o.orbit.periodDays < 10 ? 2 : 1) + " days";
+  else periodLine = "laps the Sun every " + VSS.fmtDur(A.periodYearsOf(ho));
+
+  var html = "";
+  html += '<p class="faint"><a href="targets.html">← the 200</a></p>';
+  html += "<h1>" + o.name + "</h1>";
+  html += '<p><span class="badge t-' + o.tier + '">' + VSS.TIERS[o.tier].label + " · " + sats + " satellites</span> &nbsp; " +
+    '<span class="dim">' + (VSS.CLS_LABEL[o.cls] || o.cls) + " · " + o.group + "</span></p>";
+  html += '<p class="lede">' + (o.why || "") + "</p>";
+
+  html += '<div class="grid cols-2">';
+  html += '<div class="card"><h3>Fast facts</h3><dl class="kv">' +
+    "<dt>Distance</dt><dd>" + distLine + "</dd>" +
+    "<dt>Mean radius</dt><dd>" + VSS.fmt(o.radiusKm, o.radiusKm < 10 ? 1 : 0) + " km</dd>" +
+    "<dt>Mass</dt><dd>" + (o.massKg ? o.massKg.toExponential(2) + " kg" : (gm / A.G_KM).toExponential(1) + " kg" + massNote) + "</dd>" +
+    "<dt>Orbit</dt><dd>" + periodLine + "</dd>" +
+    "<dt>Environment</dt><dd>" + VSS.ENV_LABEL[o.env] + "</dd>" +
+    "<dt>Design life there</dt><dd>" + (life ? life + " years per satellite" : "single flyby, no station-keeping") + "</dd>" +
+    "</dl></div>";
+
+  // ----- stable orbits -----
+  html += '<div class="card"><h3>Stable orbits around it</h3>';
+  if (isSun) {
+    html += '<p class="dim small">You do not orbit close around the Sun so much as choose your ring. The design study parks its hundred watchers in four kinds of places:</p>' +
+      '<dl class="kv"><dt>L1 line</dt><dd>1.5 million km sunward of Earth, the classic early-warning post</dd>' +
+      "<dt>L4 and L5</dt><dd>60 degrees ahead of and behind Earth, for side-on views of storms aimed at us</dd>" +
+      "<dt>Polar ring</dt><dd>high-inclination orbits that see the solar poles no Earth telescope can</dd>" +
+      "<dt>Far side</dt><dd>stations opposite Earth, closing the last blind spot</dd></dl>";
+  } else if (isInterstellar) {
+    html += '<p class="dim small">There is no stable orbit to be had: the visitor is moving too fast for anything to hold it. The plan here is an interceptor pair launched onto a crossing path, one good flyby each, instruments running the whole way past.</p>';
+  } else {
+    var parentGm = parent ? A.gmOf(parent) : A.GM_SUN;
+    var distKm = parent ? o.orbit.aKm : ho.aAU * A.AU_KM;
+    var bands = A.stableBands(o, parentGm, distKm);
+    html += '<dl class="kv">' +
+      "<dt>Gravitational reach</dt><dd>" + VSS.fmtKm(bands.hillKm) + " (its Hill sphere, the zone where its pull beats " + (parent ? parent.name + "'s" : "the Sun's") + ")</dd>" +
+      "<dt>Lowest safe lap</dt><dd>" + VSS.fmtKm(bands.minKm) + " from centre</dd>" +
+      "<dt>Highest steady lap</dt><dd>" + VSS.fmtKm(bands.progradeMaxKm) + " orbiting the usual way, " + VSS.fmtKm(bands.retrogradeMaxKm) + " orbiting backwards</dd>" +
+      "</dl>";
+    if (bands.usable) {
+      var rPick = Math.max(bands.minKm * 1.5, Math.min(bands.minKm * 3, bands.progradeMaxKm / 2));
+      var hPick = A.orbPeriodHours(gm, rPick);
+      html += '<p class="small dim">A picket at ' + VSS.fmtKm(rPick) + " would lap every " + (hPick < 48 ? VSS.fmt(hPick, 1) + " hours" : VSS.fmt(hPick / 24, 1) + " days") + " at " + VSS.fmtSpeed(A.circVel(gm, rPick)) + ".</p>";
+    } else {
+      html += '<p class="small dim">The stable zone here is thin; watchers would fly slow station-keeping arcs rather than true orbits.</p>';
+    }
+    html += '<p class="small"><a href="orbit-lab.html?id=' + o.id + '">Open in the orbit lab →</a></p>';
+  }
+  html += "</div></div>";
+
+  // ----- getting there -----
+  html += '<div class="grid cols-2">';
+  html += '<div class="card"><h3>Getting there</h3>';
+  if (isSun) {
+    html += '<p class="dim small">Inward transfers leave whenever you like: the Sun is always where you left it. The hard part is shedding Earth\'s sideways speed; close solar orbits usually borrow gravity assists from Venus, the way Parker Solar Probe and Solar Orbiter did.</p>';
+  } else if (isEarth) {
+    html += '<p class="dim small">You are here. Earth\'s own swarm would ride familiar orbits from low Earth orbit out to the magnetotail, no interplanetary cruise required.</p>';
+  } else if (isInterstellar) {
+    html += '<p class="dim small">No schedule exists for these: each visitor is discovered on its way in, and the window is measured in months. This is why the fleet keeps fuelled interceptors parked and waiting rather than building to order.</p>';
+  } else if (ho.e > 0.85) {
+    var peris = A.nextPerihelia(ho, new Date(), 1);
+    var py = peris.length ? peris[0].getFullYear() : null;
+    html += '<p class="dim small">This orbit is too stretched for the ferry-route maths: the body spends almost all its time far out, then dives past the Sun. A mission launches to meet it inbound near perihelion' +
+      (py && py < 12000 ? ", next due around " + (py > 3000 ? "the year " + VSS.fmt(py) : py) + "." : "; its next dive is beyond any human calendar.") + "</p>";
+    html += '<p class="small"><a href="windows.html?id=' + o.id + '">Perihelion model →</a></p>';
+  } else {
+    var earth = window.VSS_BY_ID.earth.orbit;
+    var h = A.hohmann(earth.aAU, ho.aAU);
+    var syn = A.synodicYears(A.periodYearsOf(earth), A.periodYearsOf(ho));
+    var wins = A.nextWindows(earth, ho, new Date(), 3);
+    html += '<dl class="kv">' +
+      "<dt>Cruise time</dt><dd>" + VSS.fmtDur(h.tofYears) + " on the fuel-cheapest path" + (h.tofYears > 40 ? "; in practice a mission this deep would fly a faster, meaner path and brake harder" : "") + "</dd>" +
+      "<dt>Departure push</dt><dd>" + VSS.fmt(h.dvDep, 1) + " km/s beyond Earth's orbit speed</dd>" +
+      "<dt>Window rhythm</dt><dd>" + (isFinite(syn) ? "a door opens every " + VSS.fmtDur(syn) : "no regular rhythm") + "</dd>" +
+      (wins.length ? "<dt>Next doors</dt><dd>" + wins.map(VSS.fmtDate).join(" · ") + "</dd>" : "") +
+      "</dl>";
+    html += '<p class="small"><a href="windows.html?id=' + o.id + '">Full window model →</a></p>';
+  }
+  html += "</div>";
+
+  // ----- watching it -----
+  var kitKey = window.VSS_KIT_OF(o);
+  var kitIds = window.VSS_KITS[kitKey] || [];
+  var sensors = window.VSS_SENSORS.filter(function (s) { return kitIds.indexOf(s.id) >= 0; });
+  var busId = window.VSS_BUS_OF(o);
+  var bus = window.VSS_BUSES.filter(function (b) { return b.id === busId; })[0];
+  var kitMass = sensors.reduce(function (a, s) { return a + s.massKg; }, 0);
+  var kitCost = sensors.reduce(function (a, s) { return a + s.costUsdM; }, 0);
+  html += '<div class="card"><h3>Watching it</h3>';
+  html += '<p class="dim small">Recommended fit-out for a ' + (VSS.CLS_LABEL[o.cls] || o.cls).toLowerCase() + ":</p>";
+  html += '<div class="chip-row">' + sensors.map(function (s) {
+    return '<span class="chip" title="' + s.short + '">' + s.name + "</span>";
+  }).join("") + "</div>";
+  html += '<dl class="kv">' +
+    "<dt>Bus</dt><dd>" + bus.name + ". " + bus.role + "</dd>" +
+    "<dt>Payload</dt><dd>" + VSS.fmt(kitMass, 1) + " kg of " + VSS.fmt(bus.capacityKg) + " kg capacity</dd>" +
+    "<dt>Cost each</dt><dd>" + VSS.fmtAudFull(kitCost + bus.costUsdM) + " at production scale</dd>" +
+    "<dt>Whole picket</dt><dd>" + VSS.fmtAud((kitCost + bus.costUsdM) * sats) + " for all " + sats + "</dd>" +
+    "</dl>";
+  html += '<p class="small"><a href="builder.html?id=' + o.id + '">Open in the builder →</a></p></div></div>';
+
+  // ----- keeping it alive -----
+  html += '<div class="card"><h3>Keeping the picket whole</h3>';
+  if (isInterstellar) {
+    html += '<p class="dim small">Interceptors are not replaced; they are spent. The cadence model instead keeps two fuelled and waiting at all times.</p>';
+  } else if (ho && ho.e > 0.85) {
+    html += '<p class="dim small">A body on a dive-and-vanish orbit cannot be resupplied on a schedule; its picket of ' + sats + " would launch with the perihelion intercept and carry its own spares, riding along for the whole pass.</p>";
+  } else {
+    var perYear = sats / life;
+    var earthO = window.VSS_BY_ID.earth.orbit;
+    var lead = (isSun || isEarth) ? 0.3 : Math.min(A.hohmann(earthO.aAU, ho.aAU).tofYears, 25);
+    html += '<p class="dim small">With a design life of ' + life + " years out here, this station of " + sats + " would lose on average " +
+      (perYear >= 1 ? VSS.fmt(perYear, 1) + " satellites a year" : "one satellite every " + VSS.fmtDur(1 / perYear)) +
+      ". Because the cruise out takes " + VSS.fmtDur(lead) + ", each replacement would need to launch that far ahead of the predicted failure: the factory is always building for the fleet as it will be, not as it is.</p>";
+    html += '<p class="small"><a href="cadence.html">Whole-fleet cadence model →</a></p>';
+  }
+  html += "</div>";
+
+  page.innerHTML = html;
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html lang="en-AU">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Satellite builder : Virtual Solar Swarm</title>
+<meta name="description" content="Fit a satellite bus with instruments and test the build against its destination: mass, power, data and cost budgets.">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🛰️</text></svg>">
+<link rel="stylesheet" href="assets/style.css">
+</head>
+<body>
+<header id="site-header"></header>
+<main>
+  <h1>Satellite builder</h1>
+  <p class="lede">Pick a destination, pick a bus, load it with instruments. The budgets update as you go, and the build is judged against the real physics of where it is headed: sunlight thins with distance, Jupiter's radiation eats electronics, and the deep dark needs nuclear power.</p>
+
+  <div class="controls">
+    <label>Destination <select id="target"></select></label>
+    <button id="reset">Load recommended fit-out</button>
+  </div>
+
+  <h2>1 · Choose a bus</h2>
+  <div class="grid cols-3" id="buses"></div>
+
+  <h2>2 · Load instruments</h2>
+  <div class="chip-row" id="modules"></div>
+  <p class="faint" id="mod-note"></p>
+
+  <h2>3 · The verdicts</h2>
+  <div class="grid cols-2">
+    <div class="card">
+      <h3>Budgets</h3>
+      <p class="small dim" style="margin-bottom:.2rem">Payload mass · <span id="m-mass"></span></p>
+      <div class="meter"><i id="bar-mass"></i></div>
+      <p class="small dim" style="margin:.7rem 0 .2rem">Power at destination · <span id="m-power"></span></p>
+      <div class="meter"><i id="bar-power"></i></div>
+      <p class="small dim" style="margin:.7rem 0 .2rem">Data produced vs sent home · <span id="m-data"></span></p>
+      <div class="meter"><i id="bar-data"></i></div>
+      <dl class="kv" style="margin-top:1rem">
+        <dt>One satellite</dt><dd id="c-one">·</dd>
+        <dt>Whole station</dt><dd id="c-fleet">·</dd>
+      </dl>
+    </div>
+    <div class="card">
+      <h3>Flight readiness</h3>
+      <ul id="verdicts" style="list-style:none; display:grid; gap:.5rem"></ul>
+      <p class="small" style="margin-top:1rem">
+        <button id="save">Save build in this browser</button>
+        <button id="load">Recall saved build</button>
+        <a class="btn" id="export" download="vss-satellite.json" href="#">Download as JSON</a>
+      </p>
+    </div>
+  </div>
+</main>
+<footer id="site-footer"></footer>
+<script src="assets/astro.js"></script>
+<script src="data/objects-core.js"></script>
+<script src="data/objects-moons.js"></script>
+<script src="data/objects-asteroids.js"></script>
+<script src="data/objects-comets.js"></script>
+<script src="data/objects-tnos.js"></script>
+<script src="data/objects.js"></script>
+<script src="data/sensors.js"></script>
+<script src="data/buses.js"></script>
+<script src="assets/core.js"></script>
+<script>
+VSS.mountChrome("builder.html");
+(function () {
+  var sel = document.getElementById("target");
+  var groups = {};
+  window.VSS_OBJECTS.forEach(function (o) { (groups[o.group] = groups[o.group] || []).push(o); });
+  Object.keys(groups).forEach(function (g) {
+    var og = document.createElement("optgroup"); og.label = g;
+    groups[g].forEach(function (o) {
+      var op = document.createElement("option"); op.value = o.id; op.textContent = o.name;
+      og.appendChild(op);
+    });
+    sel.appendChild(og);
+  });
+
+  var state = { target: null, bus: null, mods: [] };
+
+  function distAU(o) {
+    if (o.cls === "star") return 0.5;
+    var ho = VSS.helioOrbitOf(o);
+    return ho.hyperbolic ? 1 : ho.aAU;
+  }
+
+  function renderBuses() {
+    document.getElementById("buses").innerHTML = window.VSS_BUSES.map(function (b) {
+      var on = state.bus === b.id;
+      return '<div class="card link-card" style="cursor:pointer;' + (on ? "border-color:var(--accent)" : "") + '" data-bus="' + b.id + '">' +
+        "<h3>" + b.name + (on ? ' <span class="verdict ok">✓</span>' : "") + "</h3>" +
+        '<p class="dim small">' + b.role + "</p>" +
+        '<p class="faint">' + b.dryKg + " kg dry · carries " + b.capacityKg + " kg · " + b.powerW + " W " +
+        (b.powerSource === "rtg" ? "nuclear" : "solar at Earth's distance") + " · " + VSS.fmtAud(b.costUsdM) + "</p>" +
+        '<p class="faint">' + b.note + "</p></div>";
+    }).join("");
+    document.querySelectorAll("#buses [data-bus]").forEach(function (card) {
+      card.addEventListener("click", function () { state.bus = card.dataset.bus; render(); });
+    });
+  }
+
+  function renderModules() {
+    document.getElementById("modules").innerHTML = window.VSS_SENSORS.map(function (s) {
+      var on = state.mods.indexOf(s.id) >= 0;
+      return '<button class="chip' + (on ? " module-on" : "") + '" data-mod="' + s.id + '" title="' + s.gloss.replace(/"/g, "&quot;") + '">' +
+        (on ? "✓ " : "+ ") + s.name + " · " + s.massKg + " kg</button>";
+    }).join("");
+    document.querySelectorAll("#modules [data-mod]").forEach(function (b) {
+      b.addEventListener("click", function () {
+        var id = b.dataset.mod, i = state.mods.indexOf(id);
+        if (i >= 0) state.mods.splice(i, 1); else state.mods.push(id);
+        render();
+      });
+    });
+  }
+
+  function judge() {
+    var o = window.VSS_BY_ID[state.target];
+    var bus = window.VSS_BUSES.filter(function (b) { return b.id === state.bus; })[0];
+    var mods = window.VSS_SENSORS.filter(function (s) { return state.mods.indexOf(s.id) >= 0; });
+    var mass = mods.reduce(function (a, s) { return a + s.massKg; }, 0);
+    var power = mods.reduce(function (a, s) { return a + s.powerW; }, 0);
+    var data = mods.reduce(function (a, s) { return a + s.dataMbps; }, 0);
+    var cost = mods.reduce(function (a, s) { return a + s.costUsdM; }, 0) + bus.costUsdM;
+
+    var d = distAU(o);
+    // solar wings are sized for the destination out to the bus's rated distance; past that, light thins by the square
+    var availPower = bus.powerSource === "rtg" ? bus.powerW : bus.powerW * Math.min(1, Math.pow((bus.ratedAU || 1) / d, 2));
+    var budgetPower = availPower * 0.75; // keep a quarter for the bus itself
+    var avgPower = power * 0.6; // instruments take turns; nothing runs everything at once
+    var hasAI = state.mods.indexOf("aiproc") >= 0;
+    var downlink = (state.mods.indexOf("lasercomm") >= 0 ? 2000 : 0) + (state.mods.indexOf("mesh") >= 0 ? 50 : 0);
+    var effData = hasAI ? data / 10 : data; // onboard triage sends only the keepers
+
+    var sats = VSS.tierCount(o);
+    var checks = [];
+    function chk(ok, warn, textOk, textBad) {
+      checks.push({ level: ok ? "ok" : (warn ? "warn" : "bad"), text: ok ? textOk : textBad });
+    }
+    chk(mass <= bus.capacityKg, false,
+      "Mass fits: " + VSS.fmt(mass, 1) + " kg of " + bus.capacityKg + " kg.",
+      "Overweight: " + VSS.fmt(mass, 1) + " kg against a " + bus.capacityKg + " kg bay. Shed instruments or upsize the bus.");
+    chk(avgPower <= budgetPower, false,
+      "Power holds: " + VSS.fmt(avgPower) + " W average draw (instruments taking turns) of " + VSS.fmt(budgetPower) + " W available at " + VSS.fmt(d, 1) + " AU.",
+      "Power-starved: instruments average " + VSS.fmt(avgPower) + " W even taking turns, but only " + VSS.fmt(budgetPower) + " W is spare at " + VSS.fmt(d, 1) + " AU. " + (bus.powerSource === "solar" && d > 5 ? "Sunlight out here is too thin for panels; consider the nuclear bus." : "Drop something or upsize."));
+    if (bus.powerSource === "solar" && (o.env === "outer" || o.env === "deep"))
+      checks.push({ level: "bad", text: "Solar panels beyond Jupiter distance is a design mistake; at " + VSS.fmt(d) + " AU sunlight is " + VSS.fmt(d * d) + " times weaker than at Earth. Take the Deep D-RTG." });
+    if (o.env === "radiation")
+      chk(state.mods.indexOf("radshield") >= 0, true,
+        "Radiation vault fitted for Jupiter's belts.",
+        "This orbit sits inside Jupiter's radiation belts; without the radiation vault, expect a short life.");
+    chk(downlink > 0, false,
+      "Comms fitted: " + VSS.fmt(downlink) + " Mbps of downlink and relay.",
+      "No way to phone home: fit the laser terminal or at least the radio mesh unit.");
+    if (downlink > 0) {
+      if (effData <= downlink) {
+        checks.push({ level: "ok", text: "Data flows: " + VSS.fmt(effData) + " Mbps to send, " + VSS.fmt(downlink) + " Mbps of link" + (hasAI ? " (edge AI keeps only the interesting tenth)" : "") + "." });
+      } else if (state.mods.indexOf("mesh") >= 0 && effData <= downlink * 3) {
+        checks.push({ level: "warn", text: "Data queues: " + VSS.fmt(effData) + " Mbps made against " + VSS.fmt(downlink) + " Mbps of link. Store-and-forward through the mesh drains the backlog between observing runs; fit the laser terminal if you want it live." });
+      } else {
+        checks.push({ level: "bad", text: "Data bottleneck: instruments make " + VSS.fmt(effData) + " Mbps but the link carries " + VSS.fmt(downlink) + " Mbps. " + (hasAI ? "Fit the laser terminal or thin the payload." : "Fit the edge AI processor so only the interesting tenth flies home.") });
+      }
+    }
+    if (o.cls === "star")
+      chk(state.mods.indexOf("qcomm") >= 0, true,
+        "Quantum key channel fitted for the flagship observatory.",
+        "The solar observatory is the network's command core; the design study gives it the tamper-proof quantum key channel.");
+
+    return { o: o, bus: bus, mass: mass, avgPower: avgPower, budgetPower: budgetPower, effData: effData, downlink: downlink, cost: cost, sats: sats, checks: checks };
+  }
+
+  function render() {
+    renderBuses(); renderModules();
+    var j = judge();
+    function bar(id, val, max) {
+      var el = document.getElementById(id);
+      el.style.width = Math.min(100, (max > 0 ? val / max * 100 : 100)) + "%";
+      el.className = val > max ? "over" : "";
+    }
+    bar("bar-mass", j.mass, j.bus.capacityKg);
+    bar("bar-power", j.avgPower, j.budgetPower);
+    bar("bar-data", j.effData, Math.max(j.downlink, 1));
+    document.getElementById("m-mass").textContent = VSS.fmt(j.mass, 1) + " / " + j.bus.capacityKg + " kg";
+    document.getElementById("m-power").textContent = VSS.fmt(j.avgPower) + " / " + VSS.fmt(j.budgetPower) + " W";
+    document.getElementById("m-data").textContent = VSS.fmt(j.effData) + " / " + VSS.fmt(j.downlink) + " Mbps";
+    document.getElementById("c-one").textContent = VSS.fmtAudFull(j.cost);
+    document.getElementById("c-fleet").textContent = j.sats + " satellites at " + j.o.name + " · " + VSS.fmtAud(j.cost * j.sats);
+    document.getElementById("verdicts").innerHTML = j.checks.map(function (c) {
+      var icon = c.level === "ok" ? "✓" : c.level === "warn" ? "△" : "✕";
+      return '<li><span class="verdict ' + c.level + '">' + icon + "</span> " + c.text + "</li>";
+    }).join("");
+    document.getElementById("mod-note").textContent = state.mods.length + " instruments loaded. Hover any chip for its plain-words job description.";
+    var payload = { target: state.target, bus: state.bus, modules: state.mods, generated: "virtual-solar-swarm builder" };
+    document.getElementById("export").href = "data:application/json;charset=utf-8," + encodeURIComponent(JSON.stringify(payload, null, 2));
+  }
+
+  function loadRecommended() {
+    var o = window.VSS_BY_ID[state.target];
+    state.bus = window.VSS_BUS_OF(o);
+    state.mods = (window.VSS_KITS[window.VSS_KIT_OF(o)] || []).slice();
+    if (o.env === "radiation" && state.mods.indexOf("radshield") < 0) state.mods.push("radshield");
+    render();
+  }
+
+  sel.addEventListener("change", function () { state.target = sel.value; loadRecommended(); });
+  document.getElementById("reset").addEventListener("click", loadRecommended);
+  document.getElementById("save").addEventListener("click", function () {
+    localStorage.setItem("vss-build", JSON.stringify(state));
+  });
+  document.getElementById("load").addEventListener("click", function () {
+    try {
+      var s = JSON.parse(localStorage.getItem("vss-build"));
+      if (s && window.VSS_BY_ID[s.target]) { state = s; sel.value = s.target; render(); }
+    } catch (e) {}
+  });
+
+  var want = VSS.qs("id");
+  state.target = (want && window.VSS_BY_ID[want]) ? want : "europa";
+  sel.value = state.target;
+  loadRecommended();
+})();
+</script>
+</body>
+</html>

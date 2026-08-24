@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="en-AU">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>The 200 : Virtual Solar Swarm</title>
+<meta name="description" content="The full 200-object target catalogue of the Virtual Solar Swarm design study.">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🛰️</text></svg>">
+<link rel="stylesheet" href="assets/style.css">
+</head>
+<body>
+<header id="site-header"></header>
+<main>
+  <h1>The 200</h1>
+  <p class="lede">Every target in the study, from the Sun to a wandering visitor from another star. The <em>watchers</em> column is how many satellites the default plan would station there. Click any row for the full dossier.</p>
+
+  <div class="controls">
+    <input type="search" id="q" placeholder="Search names and notes…" aria-label="Search targets">
+    <select id="f-tier" aria-label="Filter by tier">
+      <option value="">All tiers</option>
+    </select>
+    <span class="faint" id="count-note"></span>
+  </div>
+  <div class="chip-row" id="cls-chips" role="group" aria-label="Filter by class"></div>
+
+  <div class="table-wrap">
+    <table id="tbl">
+      <thead><tr>
+        <th class="sortable" data-k="name">Name</th>
+        <th class="sortable" data-k="cls">Class</th>
+        <th class="sortable" data-k="group">Where</th>
+        <th class="sortable num" data-k="dist">Distance (AU)</th>
+        <th class="sortable num" data-k="radiusKm">Radius (km)</th>
+        <th class="sortable" data-k="tier">Tier</th>
+        <th class="sortable num" data-k="sats">Watchers</th>
+        <th>Why it earns a picket</th>
+      </tr></thead>
+      <tbody id="rows"></tbody>
+    </table>
+  </div>
+</main>
+<footer id="site-footer"></footer>
+<script src="assets/astro.js"></script>
+<script src="data/objects-core.js"></script>
+<script src="data/objects-moons.js"></script>
+<script src="data/objects-asteroids.js"></script>
+<script src="data/objects-comets.js"></script>
+<script src="data/objects-tnos.js"></script>
+<script src="data/objects.js"></script>
+<script src="data/sensors.js"></script>
+<script src="data/buses.js"></script>
+<script src="assets/core.js"></script>
+<script>
+VSS.mountChrome("targets.html");
+(function () {
+  var objs = window.VSS_OBJECTS || [];
+  var state = { q: "", cls: "", tier: "", sortK: null, sortDir: 1 };
+
+  function distOf(o) {
+    var ho = VSS.helioOrbitOf(o);
+    if (!ho) return 0;
+    if (ho.hyperbolic) return ho.qAU;
+    return ho.aAU;
+  }
+  objs.forEach(function (o) { o._dist = distOf(o); o._sats = VSS.tierCount(o); });
+
+  // class chips
+  var clsSet = [];
+  objs.forEach(function (o) { if (clsSet.indexOf(o.cls) < 0) clsSet.push(o.cls); });
+  var chipsBox = document.getElementById("cls-chips");
+  var allChip = document.createElement("button");
+  allChip.className = "chip"; allChip.textContent = "All classes"; allChip.setAttribute("aria-pressed", "true");
+  chipsBox.appendChild(allChip);
+  allChip.addEventListener("click", function () { state.cls = ""; syncChips(); render(); });
+  clsSet.forEach(function (c) {
+    var b = document.createElement("button");
+    b.className = "chip"; b.dataset.cls = c;
+    b.textContent = VSS.CLS_LABEL[c] || c;
+    b.setAttribute("aria-pressed", "false");
+    b.addEventListener("click", function () { state.cls = state.cls === c ? "" : c; syncChips(); render(); });
+    chipsBox.appendChild(b);
+  });
+  function syncChips() {
+    allChip.setAttribute("aria-pressed", String(state.cls === ""));
+    chipsBox.querySelectorAll(".chip[data-cls]").forEach(function (b) {
+      b.setAttribute("aria-pressed", String(b.dataset.cls === state.cls));
+    });
+  }
+
+  // tier filter
+  var tSel = document.getElementById("f-tier");
+  Object.keys(VSS.TIERS).forEach(function (t) {
+    var op = document.createElement("option");
+    op.value = t; op.textContent = VSS.TIERS[t].label;
+    tSel.appendChild(op);
+  });
+  tSel.addEventListener("change", function () { state.tier = tSel.value; render(); });
+
+  document.getElementById("q").addEventListener("input", function (e) {
+    state.q = e.target.value.toLowerCase(); render();
+  });
+
+  document.querySelectorAll("th.sortable").forEach(function (th) {
+    th.addEventListener("click", function () {
+      var k = th.dataset.k;
+      if (state.sortK === k) state.sortDir *= -1; else { state.sortK = k; state.sortDir = 1; }
+      render();
+    });
+  });
+
+  function keyOf(o, k) {
+    if (k === "dist") return o._dist;
+    if (k === "sats") return o._sats;
+    return o[k];
+  }
+
+  function render() {
+    var rows = objs.filter(function (o) {
+      if (state.cls && o.cls !== state.cls) return false;
+      if (state.tier && o.tier !== state.tier) return false;
+      if (state.q) {
+        var hay = (o.name + " " + o.group + " " + (o.why || "")).toLowerCase();
+        if (hay.indexOf(state.q) < 0) return false;
+      }
+      return true;
+    });
+    if (state.sortK) {
+      rows = rows.slice().sort(function (a, b) {
+        var x = keyOf(a, state.sortK), y = keyOf(b, state.sortK);
+        if (typeof x === "string") return x.localeCompare(y) * state.sortDir;
+        return ((x || 0) - (y || 0)) * state.sortDir;
+      });
+    }
+    var tb = document.getElementById("rows");
+    tb.innerHTML = rows.map(function (o) {
+      return "<tr>" +
+        '<td><a href="object.html?id=' + o.id + '">' + o.name + "</a></td>" +
+        "<td>" + (VSS.CLS_LABEL[o.cls] || o.cls) + "</td>" +
+        "<td>" + o.group + "</td>" +
+        '<td class="num">' + (o._dist ? VSS.fmt(o._dist, o._dist < 10 ? 2 : 1) : "·") + "</td>" +
+        '<td class="num">' + VSS.fmt(o.radiusKm, o.radiusKm < 10 ? 1 : 0) + "</td>" +
+        '<td><span class="badge t-' + o.tier + '">' + VSS.TIERS[o.tier].label + "</span></td>" +
+        '<td class="num">' + o._sats + "</td>" +
+        '<td class="wrap dim small">' + (o.why || "") + "</td>" +
+        "</tr>";
+    }).join("");
+    document.getElementById("count-note").textContent = rows.length + " of " + objs.length + " targets";
+  }
+  render();
+})();
+</script>
+</body>
+</html>

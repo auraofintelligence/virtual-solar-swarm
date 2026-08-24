@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html lang="en-AU">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Orbit lab : Virtual Solar Swarm</title>
+<meta name="description" content="Design a stable orbit around any of the 200 targets: safe floor, stable ceiling, lap time and speed.">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🛰️</text></svg>">
+<link rel="stylesheet" href="assets/style.css">
+</head>
+<body>
+<header id="site-header"></header>
+<main>
+  <h1>Orbit lab</h1>
+  <p class="lede">Every body owns a bubble of space where its gravity is in charge, called its Hill sphere. Park inside the bubble and you stay; drift too near its edge and the Sun (or the parent planet) steals you. This lab finds the bubble for any target and lets you slide a satellite through it.</p>
+
+  <div class="controls">
+    <label>Target
+      <select id="target"></select>
+    </label>
+    <span id="preset-row">
+      <button data-p="low">Low mapping orbit</button>
+      <button data-p="mid">Picket station</button>
+      <button data-p="dro">Distant retrograde</button>
+    </span>
+  </div>
+
+  <div id="special" class="callout" style="display:none"></div>
+
+  <div class="grid cols-2" id="lab">
+    <div class="canvas-wrap"><canvas id="cv" width="560" height="560"></canvas><div class="canvas-hud" id="hud"></div></div>
+    <div>
+      <div class="card">
+        <h3>Your orbit</h3>
+        <p><label>Orbit radius <input type="range" id="r" min="0" max="1000" value="300"></label></p>
+        <dl class="kv">
+          <dt>Radius</dt><dd id="o-r">·</dd>
+          <dt>Altitude</dt><dd id="o-alt">·</dd>
+          <dt>Lap time</dt><dd id="o-t">·</dd>
+          <dt>Speed</dt><dd id="o-v">·</dd>
+          <dt>Verdict</dt><dd id="o-verdict">·</dd>
+        </dl>
+      </div>
+      <div class="card" style="margin-top:1rem">
+        <h3>The body's bubble</h3>
+        <dl class="kv">
+          <dt>Hill sphere</dt><dd id="b-hill">·</dd>
+          <dt>Safe floor</dt><dd id="b-min">·</dd>
+          <dt>Stable ceiling</dt><dd id="b-pro">·</dd>
+          <dt>Backwards bonus</dt><dd id="b-retro">·</dd>
+          <dt>Arrival cost</dt><dd id="b-ins">·</dd>
+        </dl>
+        <p class="faint" id="b-note"></p>
+      </div>
+    </div>
+  </div>
+</main>
+<footer id="site-footer"></footer>
+<script src="assets/astro.js"></script>
+<script src="data/objects-core.js"></script>
+<script src="data/objects-moons.js"></script>
+<script src="data/objects-asteroids.js"></script>
+<script src="data/objects-comets.js"></script>
+<script src="data/objects-tnos.js"></script>
+<script src="data/objects.js"></script>
+<script src="data/sensors.js"></script>
+<script src="data/buses.js"></script>
+<script src="assets/core.js"></script>
+<script>
+VSS.mountChrome("orbit-lab.html");
+(function () {
+  var A = window.ASTRO;
+  var sel = document.getElementById("target");
+  var objs = window.VSS_OBJECTS.filter(function (o) { return o.cls !== "star" && o.cls !== "interstellar"; });
+
+  // grouped dropdown
+  var groups = {};
+  objs.forEach(function (o) { (groups[o.group] = groups[o.group] || []).push(o); });
+  Object.keys(groups).forEach(function (g) {
+    var og = document.createElement("optgroup"); og.label = g;
+    groups[g].forEach(function (o) {
+      var op = document.createElement("option"); op.value = o.id; op.textContent = o.name;
+      og.appendChild(op);
+    });
+    sel.appendChild(og);
+  });
+
+  var cur, bands, gm, vinf;
+  var slider = document.getElementById("r");
+  var cv = document.getElementById("cv"), ctx = cv.getContext("2d");
+  var W = cv.width, H = cv.height, C = W / 2;
+
+  // slider is log-mapped between minKm and retrogradeMaxKm*1.15
+  function sliderToR() {
+    var lo = Math.log(bands.minKm * 0.8), hi = Math.log(bands.retrogradeMaxKm * 1.2);
+    return Math.exp(lo + (slider.value / 1000) * (hi - lo));
+  }
+  function rToSlider(r) {
+    var lo = Math.log(bands.minKm * 0.8), hi = Math.log(bands.retrogradeMaxKm * 1.2);
+    return Math.round(1000 * (Math.log(r) - lo) / (hi - lo));
+  }
+
+  function setTarget(id) {
+    cur = window.VSS_BY_ID[id];
+    if (!cur) return;
+    sel.value = id;
+    var parent = cur.parent ? window.VSS_BY_ID[cur.parent] : null;
+    var ho = VSS.helioOrbitOf(cur);
+    var parentGm = parent ? A.gmOf(parent) : A.GM_SUN;
+    var distKm = parent ? cur.orbit.aKm : ho.aAU * A.AU_KM;
+    gm = A.gmOf(cur);
+    bands = A.stableBands(cur, parentGm, distKm);
+    var earth = window.VSS_BY_ID.earth.orbit;
+    vinf = cur.id === "earth" ? 3 : A.hohmann(earth.aAU, ho.aAU).vinfArr;
+
+    document.getElementById("b-hill").textContent = VSS.fmtKm(bands.hillKm);
+    document.getElementById("b-min").textContent = VSS.fmtKm(bands.minKm) + " from centre";
+    document.getElementById("b-pro").textContent = VSS.fmtKm(bands.progradeMaxKm);
+    document.getElementById("b-retro").textContent = "stable out to " + VSS.fmtKm(bands.retrogradeMaxKm) + " if you orbit against the grain";
+    document.getElementById("b-note").textContent =
+      "Rules of thumb: orbits the normal way round hold to about a third of the Hill sphere; backwards (retrograde) orbits hold to about a half. " +
+      (cur.massKg ? "" : "This body has never been weighed, so its gravity here is estimated from its size. ") +
+      (cur.env === "radiation" ? "Warning: this orbit sits inside Jupiter's radiation belts, the harshest place in the solar system for electronics." : "");
+    slider.value = rToSlider(Math.max(bands.minKm * 1.6, Math.min(bands.minKm * 3, bands.progradeMaxKm / 2)));
+    update();
+  }
+
+  function update() {
+    var r = sliderToR();
+    var vc = A.circVel(gm, r);
+    var hours = A.orbPeriodHours(gm, r);
+    document.getElementById("o-r").textContent = VSS.fmtKm(r) + " from centre";
+    document.getElementById("o-alt").textContent = r > cur.radiusKm ? VSS.fmtKm(r - cur.radiusKm) + " above the surface" : "below the surface";
+    document.getElementById("o-t").textContent = hours < 48 ? VSS.fmt(hours, 1) + " hours" : VSS.fmt(hours / 24, 1) + " days";
+    document.getElementById("o-v").textContent = VSS.fmtSpeed(vc);
+    var vd = document.getElementById("o-verdict");
+    if (r <= cur.radiusKm) { vd.innerHTML = '<span class="verdict bad">that is inside the body</span>'; }
+    else if (r < bands.minKm) { vd.innerHTML = '<span class="verdict bad">too low, terrain and debris risk</span>'; }
+    else if (r <= bands.progradeMaxKm) { vd.innerHTML = '<span class="verdict ok">stable, any direction</span>'; }
+    else if (r <= bands.retrogradeMaxKm) { vd.innerHTML = '<span class="verdict warn">stable only orbiting backwards</span>'; }
+    else { vd.innerHTML = '<span class="verdict bad">outside the bubble, the ' + (cur.parent ? "parent planet" : "Sun") + " wins</span>"; }
+    var ins = A.insertionDv(gm, vinf, r);
+    document.getElementById("b-ins").textContent = VSS.fmt(ins, 2) + " km/s of braking to be captured here";
+    drawView(r);
+  }
+
+  function drawView(r) {
+    ctx.clearRect(0, 0, W, H);
+    var maxR = bands.retrogradeMaxKm * 1.25;
+    var sc = (C - 12) / Math.log10(1 + maxR);
+    function px(km) { return Math.log10(1 + km) * sc; }
+    // hill zones
+    function ring(km, fill, stroke) {
+      ctx.beginPath(); ctx.arc(C, C, px(km), 0, 7);
+      if (fill) { ctx.fillStyle = fill; ctx.fill(); }
+      if (stroke) { ctx.strokeStyle = stroke; ctx.lineWidth = 1; ctx.stroke(); }
+    }
+    ring(bands.retrogradeMaxKm, "rgba(251,191,36,.06)", "rgba(251,191,36,.35)");
+    ring(bands.progradeMaxKm, "rgba(74,222,128,.07)", "rgba(74,222,128,.4)");
+    ring(bands.minKm, "rgba(6,9,19,.6)", "rgba(251,113,133,.5)");
+    // body
+    ctx.beginPath(); ctx.arc(C, C, Math.max(px(cur.radiusKm), 3), 0, 7);
+    ctx.fillStyle = "#8c9bb8"; ctx.fill();
+    // your orbit
+    ctx.beginPath(); ctx.arc(C, C, px(r), 0, 7);
+    ctx.strokeStyle = "#4cc9f0"; ctx.lineWidth = 2; ctx.stroke();
+    var ang = performance.now() / 900;
+    ctx.beginPath(); ctx.arc(C + Math.cos(ang) * px(r), C + Math.sin(ang) * px(r), 4, 0, 7);
+    ctx.fillStyle = "#4cc9f0"; ctx.fill();
+    document.getElementById("hud").textContent = cur.name + " (view uses a compressed scale)";
+  }
+  setInterval(function () { if (cur) drawView(sliderToR()); }, 60);
+
+  slider.addEventListener("input", update);
+  sel.addEventListener("change", function () { setTarget(sel.value); });
+  document.querySelectorAll("#preset-row button").forEach(function (b) {
+    b.addEventListener("click", function () {
+      if (b.dataset.p === "low") slider.value = rToSlider(bands.minKm * 1.3);
+      if (b.dataset.p === "mid") slider.value = rToSlider(Math.min(bands.minKm * 4, bands.progradeMaxKm / 2));
+      if (b.dataset.p === "dro") slider.value = rToSlider(bands.retrogradeMaxKm * 0.8);
+      update();
+    });
+  });
+
+  var want = VSS.qs("id");
+  var special = document.getElementById("special");
+  if (want === "sun" || want === "oumuamua" || want === "borisov" || want === "3i-atlas") {
+    special.style.display = "";
+    special.innerHTML = want === "sun"
+      ? "The Sun's watchers do not orbit low; they take up rings and Lagrange stations. See the <a href='object.html?id=sun'>Sun dossier</a> for the four station types. Below, the lab is loaded with Mercury instead."
+      : "Interstellar visitors cannot be orbited, only intercepted at speed. See the <a href='object.html?id=" + want + "'>dossier</a>. Below, the lab is loaded with a comet instead.";
+    want = want === "sun" ? "mercury" : "67p";
+  }
+  setTarget(want && window.VSS_BY_ID[want] ? want : "enceladus");
+})();
+</script>
+</body>
+</html>

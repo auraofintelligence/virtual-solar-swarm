@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="en-AU">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>About : Virtual Solar Swarm</title>
+<meta name="description" content="What the Virtual Solar Swarm design studio is, every approximation it makes, the concepts it leans on, and its licence.">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🛰️</text></svg>">
+<link rel="stylesheet" href="assets/style.css">
+</head>
+<body>
+<header id="site-header"></header>
+<main>
+  <h1>About this studio</h1>
+  <p class="lede">The Virtual Solar Swarm is a design study: what would it take to keep a standing watch on the 200 most interesting objects in the solar system, all at once, forever? This site turns that question into working models you can pull on. It is a thing to think with, not a mission plan.</p>
+
+  <h2>What is real here and what is not</h2>
+  <p>Nothing described on this site has been built or launched, and this site does not claim otherwise. The orbital elements of the 200 targets are real published values (rounded); the physics is real but simplified; the satellites, buses, instruments, costs and timelines are design fiction grounded in current public technology. Where a page speaks of what the swarm "would" do, that conditional is doing honest work.</p>
+
+  <h2>Every approximation, named</h2>
+  <ul style="display:grid; gap:.5rem; padding-left:1.2rem">
+    <li><strong>Two-body maths.</strong> Each orbit is computed as if only the Sun (or the parent planet) pulls on it. Real missions model every tug at once.</li>
+    <li><strong>Coplanar circular transfers.</strong> Launch windows and fuel costs use the classic Hohmann transfer between circular orbits in one flat plane. Real windows shift with eccentricity, inclination and gravity assists, which usually help.</li>
+    <li><strong>Mean-longitude window timing.</strong> Departure dates come from average orbital motion, so treat them as month-accurate at best, and rougher for very stretched orbits.</li>
+    <li><strong>Stability rules of thumb.</strong> "A third of the Hill sphere prograde, half retrograde" is a widely used shorthand, not a guarantee; real stability maps are lumpy.</li>
+    <li><strong>Estimated masses.</strong> Many small bodies have never been weighed. Where the catalogue says so, gravity is estimated from size and a typical density for that class of object.</li>
+    <li><strong>Design lives and costs.</strong> Satellite lifetimes per environment and mass-production prices are round-number engineering guesses, made adjustable wherever they matter. Prices are shown in Australian dollars converted at 1 USD to A$1.55, an indicative August 2026 rate, with the USD figure alongside.</li>
+    <li><strong>Interstellar visitors.</strong> The three visitors are shown at their catalogued paths but cannot be orbited; they are in the 200 as intercept targets.</li>
+  </ul>
+
+  <h2>The concepts this leans on</h2>
+  <p class="dim">The study assumes only technologies with flying ancestors: multi-satellite formation flying (NASA's <a href="https://www.nasa.gov/mission/magnetospheric-multiscale-mms/">MMS</a> and the <a href="https://www.nasa.gov/centers-and-facilities/nasas-starling-mission-sending-swarm-of-satellites-into-orbit/">Starling</a> swarm), swarm self-navigation by camera (Stanford's StarFOX experiment), deep-space laser communication (NASA's <a href="https://www.nasa.gov/mission/deep-space-optical-communications-dsoc/">DSOC</a>), quantum key distribution from orbit (the Micius satellite), solar observation from multiple vantage points (<a href="https://en.wikipedia.org/wiki/Solar_Orbiter">Solar Orbiter</a> and the HelioSwarm concept), and satellite mass production as proven by Starlink. What has no ancestor yet is the scale, and scale is exactly what the models on this site interrogate.</p>
+
+  <h2>Signature</h2>
+  <p>🤝🔷 A Luke × Claude build. Created by Luke Nathan Hayes (<a href="https://github.com/auraofintelligence">auraofintelligence</a>) and Claude (Fable 5), August 2026. Not a Codex build. Part of the wider Aura of Intelligence and Strange But True family of public design studies.</p>
+
+  <h2>Licence</h2>
+  <p>Released under the Strange But True Public Source Licence: free to read, learn from and adapt for personal, educational, artistic, research and community use with attribution; all commercial and corporate rights reserved to Luke Nathan Hayes. The full text is in <a href="https://github.com/auraofintelligence/virtual-solar-swarm/blob/main/LICENCE.md">LICENCE.md</a>.</p>
+</main>
+<footer id="site-footer"></footer>
+<script src="assets/astro.js"></script>
+<script src="data/objects-core.js"></script>
+<script src="data/objects-moons.js"></script>
+<script src="data/objects-asteroids.js"></script>
+<script src="data/objects-comets.js"></script>
+<script src="data/objects-tnos.js"></script>
+<script src="data/objects.js"></script>
+<script src="data/sensors.js"></script>
+<script src="data/buses.js"></script>
+<script src="assets/core.js"></script>
+<script>VSS.mountChrome("about.html");</script>
+</body>
+</html>
