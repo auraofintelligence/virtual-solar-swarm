@@ -247,6 +247,23 @@
   function circVel(gm, rKm) { return Math.sqrt(gm / rKm); }
   function orbPeriodHours(gm, rKm) { return 2 * Math.PI * Math.sqrt(rKm * rKm * rKm / gm) / 3600; }
 
+  /* Radius where the orbital period equals the body's rotation: the
+     generalised geostationary orbit. */
+  function syncOrbitKm(gm, rotSeconds) {
+    return Math.cbrt(gm * rotSeconds * rotSeconds / (4 * Math.PI * Math.PI));
+  }
+
+  /* Sun-synchronous inclination at radius rKm, from J2 nodal precession
+     matched to the body's own year. Returns degrees, or null when no tilt
+     can precess fast enough (famously the case at Venus). */
+  function sunSyncIncDeg(gm, j2, bodyRadiusKm, rKm, bodyYearYears) {
+    var n = Math.sqrt(gm / (rKm * rKm * rKm));
+    var reqRad = 2 * Math.PI / (bodyYearYears * YEAR_D * DAY_S);
+    var cosi = -reqRad / (1.5 * j2 * n * Math.pow(bodyRadiusKm / rKm, 2));
+    if (cosi < -1 || cosi > 1) return null;
+    return Math.acos(cosi) / D2R;
+  }
+
   /* Delta-v to drop from an arrival hyperbola into a circular orbit at rKm. */
   function insertionDv(gm, vinf, rKm) {
     var vPeri = Math.sqrt(vinf * vinf + 2 * gm / rKm);
@@ -276,6 +293,7 @@
     hohmann: hohmann, synodicYears: synodicYears, nextWindows: nextWindows, nextPerihelia: nextPerihelia,
     fastTransfer: fastTransfer, windowsForTransfer: windowsForTransfer, CR3BP: CR3BP,
     hillRadiusKm: hillRadiusKm, circVel: circVel, orbPeriodHours: orbPeriodHours,
+    syncOrbitKm: syncOrbitKm, sunSyncIncDeg: sunSyncIncDeg,
     insertionDv: insertionDv, stableBands: stableBands
   };
 })();

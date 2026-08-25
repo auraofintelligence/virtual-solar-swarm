@@ -16,7 +16,7 @@ An interactive, fully static website for designing a solar-system-wide satellite
 | `object.html?id=` | Per-target dossier: orbit, stable orbits, windows, fit-out, cadence |
 | `map.html` | Animated 3D heliocentric map driven by real orbital elements; drag to tilt and spin |
 | `gravity.html` | The restricted three-body problem live: Lagrange points, tadpole and horseshoe orbits, playable insertions |
-| `orbit-lab.html` | Stable orbit designer (Hill spheres, safe floors, stable ceilings) |
+| `orbit-lab.html` | 3D orbit designer: radius and tilt in hand, with stationary, sun-synchronous and Molniya orbits computed from each body's real spin and oblateness |
 | `windows.html` | Interactive launch windows: dial in extra delta-v and the whole timetable bends |
 | `convoys.html` | Ride-share batch missions and renewal convoys on every window |
 | `network.html` | Live light lag, conjunction routing, trunk capacity and the control ladder |
