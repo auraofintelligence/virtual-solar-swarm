@@ -26,7 +26,15 @@
   <div class="chip-row" id="modules"></div>
   <p class="faint" id="mod-note"></p>
 
-  <h2>3 · The verdicts</h2>
+  <h2>3 · Choose the engine</h2>
+  <p class="dim small">The cruise engine and its propellant load must buy the speed change this destination demands: braking into orbit, plus a margin, plus years of station-keeping. The full engine hall lives on <a href="rides.html">the rides page</a>.</p>
+  <div class="chip-row" id="engines"></div>
+  <div class="controls">
+    <label>Propellant load <input type="range" id="prop" min="0" max="250" value="60"></label>
+    <strong id="prop-out"></strong>
+  </div>
+
+  <h2>4 · The verdicts</h2>
   <div class="grid cols-2">
     <div class="card">
       <h3>Budgets</h3>
@@ -36,6 +44,8 @@
       <div class="meter"><i id="bar-power"></i></div>
       <p class="small dim" style="margin:.7rem 0 .2rem">Data produced vs sent home · <span id="m-data"></span></p>
       <div class="meter"><i id="bar-data"></i></div>
+      <p class="small dim" style="margin:.7rem 0 .2rem">Speed change needed vs bought · <span id="m-dv"></span></p>
+      <div class="meter"><i id="bar-dv"></i></div>
       <dl class="kv" style="margin-top:1rem">
         <dt>One satellite</dt><dd id="c-one">·</dd>
         <dt>Whole station</dt><dd id="c-fleet">·</dd>
@@ -62,10 +72,12 @@
 <script src="data/objects.js"></script>
 <script src="data/sensors.js"></script>
 <script src="data/buses.js"></script>
+<script src="data/propulsion.js"></script>
 <script src="assets/core.js"></script>
 <script>
 VSS.mountChrome("builder.html");
 (function () {
+  var A = window.ASTRO;
   var sel = document.getElementById("target");
   var groups = {};
   window.VSS_OBJECTS.forEach(function (o) { (groups[o.group] = groups[o.group] || []).push(o); });
@@ -78,7 +90,40 @@ VSS.mountChrome("builder.html");
     sel.appendChild(og);
   });
 
-  var state = { target: null, bus: null, mods: [] };
+  var state = { target: null, bus: null, mods: [], engine: "ion", propPct: 60 };
+
+  /* the speed change this destination demands of the satellite itself:
+     brake into a wide parked orbit, a 20 per cent margin, and station-keeping
+     for the design life (the launcher and kick stage pay the departure bill) */
+  function requiredDv(o) {
+    if (o.cls === "interstellar") return 0;
+    if (o.cls === "star" || o.id === "earth") return 1.0;
+    var ho = VSS.helioOrbitOf(o);
+    if (ho.e > 0.85) return 2.0;
+    if (Math.abs(ho.aAU - 1) < 0.02) return 2.0; // co-orbital neighbours: rendezvous class, not a transfer
+    var t = A.fastTransfer(1, ho.aAU, 0);
+    var brake;
+    if (o.parent) {
+      brake = A.insertionDv(A.gmOf(window.VSS_BY_ID[o.parent]), t.vinfArr, o.orbit.aKm);
+    } else {
+      var bands = A.stableBands(o, A.GM_SUN, ho.aAU * A.AU_KM);
+      var rPark = Math.max(bands.minKm * 1.6, bands.progradeMaxKm / 2);
+      brake = A.insertionDv(A.gmOf(o), t.vinfArr, rPark);
+    }
+    var life = VSS.DESIGN_LIFE[o.env] || 10;
+    return brake * 1.2 + 0.05 * life;
+  }
+
+  function renderEngines() {
+    document.getElementById("engines").innerHTML = window.VSS_ENGINES.map(function (e) {
+      var on = state.engine === e.id;
+      return '<button class="chip' + (on ? " module-on" : "") + '" data-eng="' + e.id + '" title="' + e.gloss.replace(/"/g, "&quot;") + '">' +
+        (on ? "✓ " : "") + e.name + (e.ispS ? " · " + VSS.fmt(e.ispS) + " s" : "") + "</button>";
+    }).join("");
+    document.querySelectorAll("#engines [data-eng]").forEach(function (b) {
+      b.addEventListener("click", function () { state.engine = b.dataset.eng; render(); });
+    });
+  }
 
   function distAU(o) {
     if (o.cls === "star") return 0.5;
@@ -120,10 +165,11 @@ VSS.mountChrome("builder.html");
     var o = window.VSS_BY_ID[state.target];
     var bus = window.VSS_BUSES.filter(function (b) { return b.id === state.bus; })[0];
     var mods = window.VSS_SENSORS.filter(function (s) { return state.mods.indexOf(s.id) >= 0; });
+    var engine = window.VSS_ENGINES.filter(function (e) { return e.id === state.engine; })[0];
     var mass = mods.reduce(function (a, s) { return a + s.massKg; }, 0);
     var power = mods.reduce(function (a, s) { return a + s.powerW; }, 0);
     var data = mods.reduce(function (a, s) { return a + s.dataMbps; }, 0);
-    var cost = mods.reduce(function (a, s) { return a + s.costUsdM; }, 0) + bus.costUsdM;
+    var cost = mods.reduce(function (a, s) { return a + s.costUsdM; }, 0) + bus.costUsdM + engine.costUsdM;
 
     var d = distAU(o);
     // solar wings are sized for the destination out to the bus's rated distance; past that, light thins by the square
@@ -168,11 +214,32 @@ VSS.mountChrome("builder.html");
         "Quantum key channel fitted for the flagship observatory.",
         "The solar observatory is the network's command core; the design study gives it the tamper-proof quantum key channel.");
 
-    return { o: o, bus: bus, mass: mass, avgPower: avgPower, budgetPower: budgetPower, effData: effData, downlink: downlink, cost: cost, sats: sats, checks: checks };
+    // ---- the engine and its tank against the destination's demands ----
+    var dryKg = bus.dryKg + mass;
+    var propKg = dryKg * state.propPct / 100;
+    var dvBought = engine.ispS > 0 ? engine.ispS * 9.81 * Math.log(1 + propKg / dryKg) / 1000 : 0;
+    var dvNeeded = requiredDv(o);
+    if (o.cls === "interstellar") {
+      checks.push({ level: "ok", text: "Interceptor: no orbit insertion, one good pass. The engine only trims the aim." });
+    } else if (engine.id === "sail") {
+      checks.push({ level: "bad", text: "A sail cannot brake at the far end; this destination needs " + VSS.fmt(dvNeeded, 1) + " km/s of stopping. Sails suit sun-watching stations that never park." });
+    } else {
+      chk(dvBought >= dvNeeded, false,
+        "Delta-v holds: " + VSS.fmt(dvBought, 1) + " km/s aboard against " + VSS.fmt(dvNeeded, 1) + " needed (brake, margin and a life of station-keeping).",
+        "Not enough juice: " + VSS.fmt(dvBought, 1) + " km/s aboard but the destination demands " + VSS.fmt(dvNeeded, 1) + ". Load more propellant, or pick a higher-mileage engine.");
+      if (engine.thrust === "patient" && dvNeeded > 3)
+        checks.push({ level: "warn", text: "A patient engine must start its braking months early to manage a stop this hard; mission design work, not a dealbreaker." });
+      if (engine.needsPower && (o.env === "outer" || o.env === "deep") && bus.powerSource !== "rtg")
+        checks.push({ level: "bad", text: "This electric engine has no power out here on solar wings; pair it with the nuclear bus or choose fission-electric." });
+      if (engine.id === "ntp")
+        checks.push({ level: "warn", text: "A reactor kick stage outweighs a small satellite; in this study one nuclear tug would usually carry a whole picket out and come home." });
+    }
+
+    return { o: o, bus: bus, engine: engine, dvBought: dvBought, dvNeeded: dvNeeded, propKg: propKg, mass: mass, avgPower: avgPower, budgetPower: budgetPower, effData: effData, downlink: downlink, cost: cost, sats: sats, checks: checks };
   }
 
   function render() {
-    renderBuses(); renderModules();
+    renderBuses(); renderModules(); renderEngines();
     var j = judge();
     function bar(id, val, max) {
       var el = document.getElementById(id);
@@ -182,6 +249,9 @@ VSS.mountChrome("builder.html");
     bar("bar-mass", j.mass, j.bus.capacityKg);
     bar("bar-power", j.avgPower, j.budgetPower);
     bar("bar-data", j.effData, Math.max(j.downlink, 1));
+    bar("bar-dv", j.dvNeeded, Math.max(j.dvBought, 0.1));
+    document.getElementById("m-dv").textContent = VSS.fmt(j.dvNeeded, 1) + " needed / " + VSS.fmt(j.dvBought, 1) + " km/s aboard";
+    document.getElementById("prop-out").textContent = VSS.fmt(j.propKg, 0) + " kg of propellant (" + state.propPct + "% of dry mass)";
     document.getElementById("m-mass").textContent = VSS.fmt(j.mass, 1) + " / " + j.bus.capacityKg + " kg";
     document.getElementById("m-power").textContent = VSS.fmt(j.avgPower) + " / " + VSS.fmt(j.budgetPower) + " W";
     document.getElementById("m-data").textContent = VSS.fmt(j.effData) + " / " + VSS.fmt(j.downlink) + " Mbps";
@@ -192,7 +262,7 @@ VSS.mountChrome("builder.html");
       return '<li><span class="verdict ' + c.level + '">' + icon + "</span> " + c.text + "</li>";
     }).join("");
     document.getElementById("mod-note").textContent = state.mods.length + " instruments loaded. Hover any chip for its plain-words job description.";
-    var payload = { target: state.target, bus: state.bus, modules: state.mods, generated: "virtual-solar-swarm builder" };
+    var payload = { target: state.target, bus: state.bus, modules: state.mods, engine: state.engine, propellantPctOfDry: state.propPct, generated: "virtual-solar-swarm builder" };
     document.getElementById("export").href = "data:application/json;charset=utf-8," + encodeURIComponent(JSON.stringify(payload, null, 2));
   }
 
@@ -201,8 +271,18 @@ VSS.mountChrome("builder.html");
     state.bus = window.VSS_BUS_OF(o);
     state.mods = (window.VSS_KITS[window.VSS_KIT_OF(o)] || []).slice();
     if (o.env === "radiation" && state.mods.indexOf("radshield") < 0) state.mods.push("radshield");
+    state.engine = window.VSS_ENGINE_OF(o);
+    // load enough tank to clear the destination's demand, plus a little
+    var e = window.VSS_ENGINES.filter(function (x) { return x.id === state.engine; })[0];
+    var need = requiredDv(o);
+    var frac = Math.exp(need * 1000 / (e.ispS * 9.81)) - 1;
+    state.propPct = Math.min(250, Math.max(20, Math.round(frac * 110)));
+    document.getElementById("prop").value = state.propPct;
     render();
   }
+  document.getElementById("prop").addEventListener("input", function (e) {
+    state.propPct = +e.target.value; render();
+  });
 
   sel.addEventListener("change", function () { state.target = sel.value; loadRecommended(); });
   document.getElementById("reset").addEventListener("click", loadRecommended);

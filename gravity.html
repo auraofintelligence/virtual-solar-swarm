@@ -1,0 +1,436 @@
+<!DOCTYPE html>
+<html lang="en-AU">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Gravity lab : Virtual Solar Swarm</title>
+<meta name="description" content="Gravity as a landscape: Lagrange points, tadpole and horseshoe orbits, distant retrograde orbits and arrival insertions, computed live in the rotating frame.">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🛰️</text></svg>">
+<link rel="stylesheet" href="assets/style.css">
+</head>
+<body>
+<header id="site-header"></header>
+<main>
+  <h1>Gravity lab</h1>
+  <p class="lede">Pick any pair of bodies and watch gravity itself. The view rides along with the pair, so both sit still while the whole frame spins; gravity plus that spin makes a landscape with five ledges, the Lagrange points. Tilt into the sheet view to see the landscape in 3D, then drop test satellites on it and watch what holds.</p>
+
+  <div class="controls">
+    <label>System <select id="system"></select></label>
+    <button id="v-flat" aria-pressed="false">Flat view</button>
+    <button id="v-sheet" aria-pressed="true">Gravity sheet</button>
+    <label>Sim speed
+      <select id="simspeed">
+        <option value="0.5">slow</option>
+        <option value="2" selected>normal</option>
+        <option value="8">fast</option>
+        <option value="32">very fast</option>
+      </select>
+    </label>
+    <button id="clear">Clear satellites</button>
+  </div>
+
+  <div class="chip-row">
+    <button class="chip" data-p="tadpole">Tadpole at L4</button>
+    <button class="chip" data-p="ledge">Sit on the L1 ledge</button>
+    <button class="chip" data-p="dro">Distant retrograde</button>
+    <button class="chip" data-p="low">Low orbit</button>
+    <button class="chip" data-p="horseshoe">Horseshoe (give it time)</button>
+    <button class="chip" data-p="arrive">Arrive and brake</button>
+  </div>
+  <div class="controls" id="dv-row" style="display:none">
+    <label>Braking burn <input type="range" id="dv" min="0" max="1000" value="300"></label>
+    <span class="small"><strong id="dv-out"></strong> · <span class="dim" id="dv-hint"></span></span>
+  </div>
+
+  <div class="canvas-wrap">
+    <canvas id="cv" width="1160" height="760"></canvas>
+    <div class="canvas-hud" id="hud">drag to tilt and spin · presets drop satellites</div>
+  </div>
+  <p class="faint" id="status-line">&nbsp;</p>
+
+  <div class="grid cols-2">
+    <div class="card">
+      <h3>The five ledges here</h3>
+      <dl class="kv" id="ledges"></dl>
+      <p class="faint" id="ledge-note"></p>
+    </div>
+    <div class="card">
+      <h3>What you are looking at</h3>
+      <p class="dim small">The sheet is the combined pull of both bodies plus the spin of the frame, drawn as height. Both bodies sit in deep wells. L4 and L5 are the two hilltops, and here is the surprise: satellites do not roll off them, because the sideways Coriolis push of the spinning frame steers anything that starts drifting back into a loop. That is why the tadpole orbit works, and why Jupiter has collected thousands of Trojan asteroids on its own L4 and L5 (eight of them are in <a href="targets.html">the 200</a>).</p>
+      <p class="dim small">L1, L2 and L3 are mountain-pass saddles: a satellite parked there is balanced but not held, like a marble on a ridge. Watch the L1 preset sit quietly for a while and then slide off; real L1 missions burn a whisker of fuel every few weeks to stay put.</p>
+      <p class="dim small">The arrive-and-brake preset shows an insertion: a craft screaming past gets one chance to burn. Too little brake and it keeps going; enough and it falls into a loop. Brake into a loose, wide loop and a third thing can happen: the orbit leaks back out through the L1 or L2 pass. The bubble of safety is real and it has doors.</p>
+      <p class="faint">Honesty: this is the planar circular restricted three-body problem, the classic teaching model. Orbits here are flattened to the plane and the pair is assumed circular. It is the right tool for seeing why these orbits exist, not for flying them.</p>
+    </div>
+  </div>
+</main>
+<footer id="site-footer"></footer>
+<script src="assets/astro.js"></script>
+<script src="data/objects-core.js"></script>
+<script src="data/objects-moons.js"></script>
+<script src="data/objects-asteroids.js"></script>
+<script src="data/objects-comets.js"></script>
+<script src="data/objects-tnos.js"></script>
+<script src="data/objects.js"></script>
+<script src="data/sensors.js"></script>
+<script src="data/buses.js"></script>
+<script src="assets/core.js"></script>
+<script>
+VSS.mountChrome("gravity.html");
+(function () {
+  var A = window.ASTRO, C3 = A.CR3BP;
+  var byId = window.VSS_BY_ID;
+
+  // ---- the pair catalogue: Sun + planet, and planet + big moon ----
+  function makePair(pri, sec) {
+    var p = byId[pri], s = byId[sec];
+    var m1 = p.massKg, m2 = s.massKg;
+    if (!m1 || !m2) return null;
+    var distKm = s.parent ? s.orbit.aKm : s.orbit.aAU * A.AU_KM;
+    var periodDays = s.parent ? s.orbit.periodDays : A.periodYearsOf(s.orbit) * 365.25;
+    return {
+      key: pri + "-" + sec, label: p.name + " and " + s.name,
+      mu: m2 / (m1 + m2), distKm: distKm, periodDays: periodDays,
+      pri: p, sec: s,
+      vUnitKms: (2 * Math.PI * distKm) / (periodDays * 86400) // one frame unit of speed, in km/s
+    };
+  }
+  var PAIRS = [
+    ["sun", "mercury"], ["sun", "venus"], ["sun", "earth"], ["sun", "mars"],
+    ["sun", "jupiter"], ["sun", "saturn"], ["sun", "uranus"], ["sun", "neptune"],
+    ["earth", "moon"], ["jupiter", "io"], ["jupiter", "europa"], ["jupiter", "ganymede"],
+    ["jupiter", "callisto"], ["saturn", "titan"], ["neptune", "triton"], ["pluto", "charon"]
+  ].map(function (pr) { return makePair(pr[0], pr[1]); }).filter(Boolean);
+
+  var sel = document.getElementById("system");
+  PAIRS.forEach(function (pr) {
+    var op = document.createElement("option"); op.value = pr.key; op.textContent = pr.label;
+    sel.appendChild(op);
+  });
+
+  var cv = document.getElementById("cv"), ctx = cv.getContext("2d");
+  var W = cv.width, H = cv.height, CX = W / 2 - 20, CY = H / 2;
+
+  var pair, mu, Lpts, omegaL4;
+  var yaw = 0.35, tilt = 0.85, zoom = 1;
+  var sheet = true;
+  var S = Math.min(W, H) / 3.1;         // px per frame unit
+  var HREL = 150;                        // px of relief per unit of potential
+  var particles = [], simMult = 2, simElapsed = 0;
+  var arriveParams = null;
+
+  function hOf(x, y) {
+    if (!sheet) return 0;
+    return Math.max(-140, (omegaL4 - C3.omega(mu, x, y)) * HREL);
+  }
+  function project(x, y, z) {
+    var X = (x - 0.15) * S * zoom, Y = y * S * zoom, Z = (z || 0) * zoom;
+    var cyw = Math.cos(yaw), syw = Math.sin(yaw);
+    var x1 = X * cyw - Y * syw, y1 = X * syw + Y * cyw;
+    var ct = Math.cos(tilt), st = Math.sin(tilt);
+    return { x: CX + x1, y: CY - (y1 * ct + Z * st) };
+  }
+
+  // ---- sheet mesh, cached per system ----
+  var mesh = null;
+  function buildMesh() {
+    var N = 52, span = 1.5;
+    mesh = [];
+    for (var i = 0; i <= N; i++) {
+      var row = [];
+      for (var j = 0; j <= N; j++) {
+        var x = -span + 2 * span * i / N, y = -span + 2 * span * j / N;
+        row.push({ x: x, y: y, h: Math.max(-140, (omegaL4 - C3.omega(mu, x, y)) * HREL) });
+      }
+      mesh.push(row);
+    }
+  }
+
+  function setSystem(key) {
+    pair = PAIRS.filter(function (p) { return p.key === key; })[0] || PAIRS[8];
+    sel.value = pair.key;
+    mu = pair.mu;
+    Lpts = C3.lagrangePoints(mu);
+    omegaL4 = C3.omega(mu, Lpts.L4.x, Lpts.L4.y);
+    buildMesh();
+    particles = []; simElapsed = 0; arriveParams = null;
+    document.getElementById("dv-row").style.display = "none";
+    renderLedges();
+    setStatus("System set: " + pair.label + ". The frame turns once every " + fmtSpan(pair.periodDays) + ".");
+  }
+
+  function fmtSpan(days) {
+    if (days < 90) return VSS.fmt(days, 1) + " days";
+    return VSS.fmt(days / 365.25, 1) + " years";
+  }
+  function setStatus(t) { document.getElementById("status-line").textContent = t; }
+
+  function renderLedges() {
+    var d1 = (1 - mu - Lpts.L1.x) * pair.distKm;   // L1 distance from secondary
+    var d2 = (Lpts.L2.x - (1 - mu)) * pair.distKm;
+    var eg = pair.key === "sun-earth"
+      ? "Sun and Earth: L1 is the solar early-warning post, L2 is where the James Webb telescope lives."
+      : pair.key === "sun-jupiter"
+        ? "Sun and Jupiter: thousands of Trojan asteroids ride L4 and L5 for real."
+        : pair.key === "earth-moon"
+          ? "Earth and Moon: L1 and L2 are the staging posts of every lunar logistics plan."
+          : "The study parks pickets and relays on ledges like these wherever they are useful.";
+    document.getElementById("ledges").innerHTML =
+      "<dt>L1</dt><dd>" + VSS.fmtKm(d1) + " inside " + pair.sec.name + "'s orbit; the doorway between the two wells</dd>" +
+      "<dt>L2</dt><dd>" + VSS.fmtKm(d2) + " beyond " + pair.sec.name + "; quiet sky, whole-system view</dd>" +
+      "<dt>L3</dt><dd>on the far side of " + pair.pri.name + ", forever hidden from " + pair.sec.name + "</dd>" +
+      "<dt>L4 and L5</dt><dd>60° ahead of and behind " + pair.sec.name + " on its own orbit; the stable hilltops</dd>";
+    document.getElementById("ledge-note").textContent = eg;
+  }
+
+  // ---- presets ----
+  var radNorm; // secondary's physical radius in frame units
+  function presets(name) {
+    radNorm = Math.max(pair.sec.radiusKm / pair.distKm, 0.004);
+    var p = null;
+    if (name === "tadpole") {
+      p = { x: Lpts.L4.x + 0.02, y: Lpts.L4.y, vx: 0, vy: 0, tag: "tadpole" };
+      setStatus("Dropped at rest just off L4. Coriolis steering bends its fall into a looping tadpole that never leaves the hilltop region.");
+    } else if (name === "ledge") {
+      p = { x: Lpts.L1.x, y: 0, vx: 0, vy: 0, tag: "L1" };
+      setStatus("Parked exactly on the L1 saddle. Balanced, not held: watch it slide off the ridge after a while. Real missions station-keep here.");
+    } else if (name === "dro") {
+      var d = Math.max(8 * radNorm, 0.06);
+      p = { x: 1 - mu + d, y: 0, vx: 0, vy: -(d + Math.sqrt(mu / d)), tag: "DRO" };
+      setStatus("A distant retrograde orbit: circling " + pair.sec.name + " against the grain. These are famously steady; the study uses them for wide pickets.");
+    } else if (name === "low") {
+      var dl = Math.max(3 * radNorm, 0.02);
+      p = { x: 1 - mu + dl, y: 0, vx: 0, vy: Math.sqrt(mu / dl) - dl, tag: "low orbit" };
+      setStatus("A close prograde orbit, deep inside the well where the third body barely matters.");
+    } else if (name === "horseshoe") {
+      p = { x: -1.02, y: 0, vx: 0, vy: 0, tag: "horseshoe" };
+      setStatus("Released near L3 with a whisker of extra radius. Over many frame turns it drifts along the whole ring and bounces back: a horseshoe orbit. Be patient or turn the speed up.");
+    } else if (name === "arrive") {
+      startArrival();
+      return;
+    }
+    if (p) { p.trail = []; p.state = "flying"; particles.push(p); }
+  }
+
+  function startArrival() {
+    radNorm = Math.max(pair.sec.radiusKm / pair.distKm, 0.004);
+    var rp = Math.max(3 * radNorm, 0.015);
+    var vesc = Math.sqrt(2 * mu / rp);
+    var vinf = 0.8 * Math.sqrt(mu / rp);
+    var vp = Math.sqrt(vinf * vinf + vesc * vesc);
+    var dvMin = vp - vesc;
+    arriveParams = { rp: rp, vp: vp, dvMin: dvMin };
+    var slider = document.getElementById("dv");
+    document.getElementById("dv-row").style.display = "";
+    updateDvReadout();
+    launchArrival(+slider.value / 1000);
+  }
+  function updateDvReadout() {
+    if (!arriveParams) return;
+    var frac = +document.getElementById("dv").value / 1000;      // 0..1 of 2*dvMin
+    var dv = frac * 2 * arriveParams.dvMin;
+    var real = dv * pair.vUnitKms;
+    document.getElementById("dv-out").textContent =
+      (real >= 1 ? VSS.fmt(real, 2) + " km/s" : VSS.fmt(real * 1000, 0) + " m/s");
+    document.getElementById("dv-hint").textContent =
+      "capture needs about " + (arriveParams.dvMin * pair.vUnitKms >= 1
+        ? VSS.fmt(arriveParams.dvMin * pair.vUnitKms, 2) + " km/s"
+        : VSS.fmt(arriveParams.dvMin * pair.vUnitKms * 1000, 0) + " m/s") + "; slide and re-run";
+  }
+  function launchArrival(frac) {
+    var ap = arriveParams;
+    var dv = frac * 2 * ap.dvMin;
+    var vAfter = ap.vp - dv;
+    var x0 = 1 - mu + ap.rp;
+    var p = { x: x0, y: 0, vx: 0, vy: vAfter - x0, tag: "arrival", trail: [], state: "flying", watchCapture: true };
+    particles.push(p);
+    setStatus("Flyby at periapsis, burn applied: " + document.getElementById("dv-out").textContent + " of brake. Watching what gravity decides…");
+  }
+
+  // ---- integration ----
+  function relEnergy(p) {
+    var vrx = p.vx - p.y, vry = p.vy + p.x - (1 - mu);
+    var r2 = Math.hypot(p.x - (1 - mu), p.y);
+    return 0.5 * (vrx * vrx + vry * vry) - mu / Math.max(r2, 1e-6);
+  }
+  function stepAll(frameDt) {
+    var dt = 0.0025;
+    var steps = Math.max(1, Math.round(simMult * frameDt / dt));
+    if (steps > 400) steps = 400;
+    simElapsed += steps * dt;
+    particles.forEach(function (p) {
+      if (p.state !== "flying") return;
+      for (var k = 0; k < steps; k++) {
+        C3.step(mu, p, dt);
+        var r2 = Math.hypot(p.x - (1 - mu), p.y);
+        var r1 = Math.hypot(p.x + mu, p.y);
+        if (r2 < radNorm * 0.9 || r1 < Math.max(pair.pri.radiusKm / pair.distKm, 0.008) * 0.9) { p.state = "crashed"; break; }
+        if (Math.hypot(p.x, p.y) > 2.3) { p.state = "escaped"; break; }
+      }
+      if (p.trail.length > 700) p.trail.splice(0, p.trail.length - 700);
+      p.trail.push({ x: p.x, y: p.y });
+      if (p.watchCapture && p.state === "flying") {
+        p.captured = relEnergy(p) < 0;
+      }
+      if (p.state === "crashed") setStatus("One satellite hit " + pair.sec.name + ". The floor of the well is not a metaphor.");
+      if (p.state === "escaped") setStatus("One satellite left through a pass and is gone. " + (p.watchCapture ? "Not enough brake, or too loose a loop: the bubble has doors." : ""));
+    });
+  }
+
+  // ---- drawing ----
+  function draw() {
+    ctx.clearRect(0, 0, W, H);
+    ctx.fillStyle = "rgba(220,229,245,.06)";
+    for (var s = 0; s < 70; s++) ctx.fillRect((s * 971) % W, (s * 613) % H, 1, 1);
+
+    if (sheet && mesh) {
+      ctx.strokeStyle = "rgba(76,201,240,.14)"; ctx.lineWidth = 1;
+      var N = mesh.length - 1;
+      for (var i = 0; i <= N; i += 2) {
+        ctx.beginPath();
+        for (var j = 0; j <= N; j++) {
+          var q = mesh[i][j], pp = project(q.x, q.y, q.h);
+          j ? ctx.lineTo(pp.x, pp.y) : ctx.moveTo(pp.x, pp.y);
+        }
+        ctx.stroke();
+        ctx.beginPath();
+        for (var j2 = 0; j2 <= N; j2++) {
+          var q2 = mesh[j2][i], pp2 = project(q2.x, q2.y, q2.h);
+          j2 ? ctx.lineTo(pp2.x, pp2.y) : ctx.moveTo(pp2.x, pp2.y);
+        }
+        ctx.stroke();
+      }
+    } else {
+      // flat view: the ring the secondary rides
+      ctx.strokeStyle = "rgba(140,155,184,.25)"; ctx.lineWidth = 1;
+      ctx.beginPath();
+      for (var k = 0; k <= 90; k++) {
+        var a = k / 90 * 2 * Math.PI;
+        var pr = project(Math.cos(a), Math.sin(a), 0);
+        k ? ctx.lineTo(pr.x, pr.y) : ctx.moveTo(pr.x, pr.y);
+      }
+      ctx.stroke();
+    }
+
+    // bodies
+    var pb = project(-mu, 0, hOf(-mu, 0));
+    ctx.fillStyle = pair.pri.cls === "star" ? "#f0b429" : "#c9b28a";
+    ctx.beginPath(); ctx.arc(pb.x, pb.y, 9, 0, 7); ctx.fill();
+    ctx.fillStyle = "rgba(220,229,245,.8)"; ctx.font = "12px system-ui, sans-serif";
+    ctx.fillText(pair.pri.name, pb.x + 12, pb.y - 6);
+    var sb = project(1 - mu, 0, hOf(1 - mu, 0));
+    ctx.fillStyle = "#38bdf8";
+    ctx.beginPath(); ctx.arc(sb.x, sb.y, 5, 0, 7); ctx.fill();
+    ctx.fillText(pair.sec.name, sb.x + 9, sb.y - 6);
+
+    // Lagrange points
+    ctx.font = "11px system-ui, sans-serif";
+    ["L1", "L2", "L3", "L4", "L5"].forEach(function (k) {
+      var L = Lpts[k];
+      var pl = project(L.x, L.y, hOf(L.x, L.y));
+      ctx.fillStyle = "#f0b429";
+      ctx.beginPath();
+      ctx.moveTo(pl.x, pl.y - 4); ctx.lineTo(pl.x + 4, pl.y); ctx.lineTo(pl.x, pl.y + 4); ctx.lineTo(pl.x - 4, pl.y);
+      ctx.fill();
+      ctx.fillStyle = "rgba(240,180,41,.85)";
+      ctx.fillText(k, pl.x + 6, pl.y + 4);
+    });
+
+    // particles and trails
+    particles.forEach(function (p) {
+      if (p.trail.length > 1) {
+        ctx.strokeStyle = p.watchCapture ? "rgba(74,222,128,.5)" : "rgba(76,201,240,.5)";
+        ctx.lineWidth = 1.4;
+        ctx.beginPath();
+        for (var i = 0; i < p.trail.length; i += 2) {
+          var t = p.trail[i], pt = project(t.x, t.y, hOf(t.x, t.y) + 2);
+          i ? ctx.lineTo(pt.x, pt.y) : ctx.moveTo(pt.x, pt.y);
+        }
+        ctx.stroke();
+      }
+      var pp = project(p.x, p.y, hOf(p.x, p.y) + 2);
+      ctx.fillStyle = p.state === "crashed" ? "#fb7185" : p.state === "escaped" ? "#5c6a85" : (p.watchCapture ? "#4ade80" : "#4cc9f0");
+      ctx.beginPath(); ctx.arc(pp.x, pp.y, 4, 0, 7); ctx.fill();
+      if (p.watchCapture && p.state === "flying") {
+        ctx.fillStyle = "rgba(220,229,245,.8)";
+        ctx.fillText(p.captured ? "captured" : "flying past", pp.x + 8, pp.y - 6);
+      }
+    });
+
+    var days = simElapsed / (2 * Math.PI) * pair.periodDays;
+    document.getElementById("hud").textContent =
+      pair.label + " · elapsed " + fmtSpan(days) + " · " + particles.filter(function (p) { return p.state === "flying"; }).length + " flying";
+  }
+
+  var last = performance.now();
+  function tick(now) {
+    var dt = Math.min((now - last) / 1000, 0.05); last = now;
+    stepAll(dt);
+    draw();
+    requestAnimationFrame(tick);
+  }
+
+  // ---- controls ----
+  sel.addEventListener("change", function () { setSystem(sel.value); });
+  document.getElementById("simspeed").addEventListener("change", function (e) { simMult = +e.target.value; });
+  document.getElementById("clear").addEventListener("click", function () { particles = []; arriveParams = null; document.getElementById("dv-row").style.display = "none"; setStatus("Cleared."); });
+  document.querySelectorAll(".chip[data-p]").forEach(function (b) {
+    b.addEventListener("click", function () { presets(b.dataset.p); });
+  });
+  document.getElementById("dv").addEventListener("input", updateDvReadout);
+  document.getElementById("dv").addEventListener("change", function () {
+    if (!arriveParams) return;
+    particles = particles.filter(function (p) { return !p.watchCapture; });
+    launchArrival(+document.getElementById("dv").value / 1000);
+  });
+  function setView(sh) {
+    sheet = sh;
+    document.getElementById("v-sheet").setAttribute("aria-pressed", String(sh));
+    document.getElementById("v-flat").setAttribute("aria-pressed", String(!sh));
+    if (!sh) { tilt = 0; } else if (tilt < 0.3) { tilt = 0.85; }
+  }
+  document.getElementById("v-flat").addEventListener("click", function () { setView(false); });
+  document.getElementById("v-sheet").addEventListener("click", function () { setView(true); });
+
+  var dragging = false, lx = 0, ly = 0;
+  cv.addEventListener("mousedown", function (e) { dragging = true; lx = e.clientX; ly = e.clientY; });
+  window.addEventListener("mousemove", function (e) {
+    if (!dragging) return;
+    yaw += (e.clientX - lx) * 0.006;
+    tilt = Math.min(1.45, Math.max(0, tilt + (e.clientY - ly) * 0.006));
+    lx = e.clientX; ly = e.clientY;
+  });
+  window.addEventListener("mouseup", function () { dragging = false; });
+  cv.addEventListener("wheel", function (e) {
+    e.preventDefault();
+    zoom = Math.min(4, Math.max(0.5, zoom * (e.deltaY < 0 ? 1.12 : 0.89)));
+  }, { passive: false });
+  cv.addEventListener("touchstart", function (e) { if (e.touches.length === 1) { dragging = true; lx = e.touches[0].clientX; ly = e.touches[0].clientY; } }, { passive: true });
+  cv.addEventListener("touchmove", function (e) {
+    if (dragging && e.touches.length === 1) {
+      yaw += (e.touches[0].clientX - lx) * 0.006;
+      tilt = Math.min(1.45, Math.max(0, tilt + (e.touches[0].clientY - ly) * 0.006));
+      lx = e.touches[0].clientX; ly = e.touches[0].clientY;
+      e.preventDefault();
+    }
+  }, { passive: false });
+  window.addEventListener("touchend", function () { dragging = false; });
+
+  // ---- boot ----
+  var want = VSS.qs("id");
+  var initial = "earth-moon";
+  if (want) {
+    var hit = PAIRS.filter(function (p) { return p.sec.id === want; })[0];
+    if (hit) initial = hit.key;
+    else if (byId[want] && byId[want].parent) {
+      var hp = PAIRS.filter(function (p) { return p.sec.id === byId[want].parent; })[0];
+      if (hp) initial = hp.key;
+    }
+  }
+  setSystem(initial);
+  presets("tadpole");
+  draw();
+  requestAnimationFrame(tick);
+})();
+</script>
+</body>
+</html>

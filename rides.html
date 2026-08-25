@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="en-AU">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>The rides : Virtual Solar Swarm</title>
+<meta name="description" content="Launch stages for the gravity well and cruise engines for the interplanetary road: chemical, ion, Neumann Drive, nuclear thermal, fission-electric and solar sail, with a working delta-v calculator.">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🛰️</text></svg>">
+<link rel="stylesheet" href="assets/style.css">
+</head>
+<body>
+<header id="site-header"></header>
+<main>
+  <h1>The rides</h1>
+  <p class="lede">Getting off Earth and crossing the solar system are two different problems, and they want two different machines. The gravity well only yields to brute chemical fire; the road beyond rewards patience and fuel mileage. This page holds both fleets, with a working calculator underneath.</p>
+
+  <div class="callout">A note on the numbers. An engine's <strong>fuel mileage</strong> is its specific impulse: how much push each kilogram of propellant buys. A <strong>kick</strong> engine shoves hard for minutes; a <strong>patient</strong> engine pushes like a resting sheet of paper for months and wins anyway. The push dial on the <a href="windows.html">launch windows page</a> is bought with exactly these machines.</p>
+
+  <h2>Leg one: climbing the well</h2>
+  <p class="dim small">From the ground to orbit costs about 9.3 km/s and must be paid in minutes, which is why every rung of this ladder burns chemical propellant. Patient engines never leave the pad.</p>
+  <div class="grid cols-3" id="launchers"></div>
+
+  <h2>Leg two: the road</h2>
+  <p class="dim small">Once free of the well, thrust matters less and mileage matters more. Pick the engine for the destination and the errand.</p>
+  <div class="grid cols-3" id="engines"></div>
+
+  <h2>The delta-v calculator</h2>
+  <p class="dim small">The rocket equation, live. Pick an engine, load propellant, read off the speed change the stack can buy. The bars below show what common errands cost.</p>
+  <div class="grid cols-2">
+    <div class="card">
+      <div class="chip-row" id="calc-engines"></div>
+      <p><label>Dry mass (satellite plus empty stage) <input type="range" id="dry" min="100" max="1500" step="25" value="350"></label> <strong id="dry-out">350 kg</strong></p>
+      <p><label>Propellant loaded <input type="range" id="prop" min="0" max="300" value="80"></label> <strong id="prop-out"></strong></p>
+      <dl class="kv">
+        <dt>Speed change bought</dt><dd><span class="stat" id="dv-out">·</span></dd>
+        <dt>How it arrives</dt><dd id="style-out">·</dd>
+      </dl>
+      <p class="faint" id="calc-note"></p>
+    </div>
+    <div class="card">
+      <h3>What the errands cost</h3>
+      <div id="errands"></div>
+      <p class="faint">Costs are one-way speed changes beyond Earth's orbit, from this site's own transfer model. A patient engine delivers its total slowly, so it suits the cruise; the hard braking of an insertion still wants a kick stage or a very early start.</p>
+    </div>
+  </div>
+</main>
+<footer id="site-footer"></footer>
+<script src="assets/astro.js"></script>
+<script src="data/objects-core.js"></script>
+<script src="data/objects-moons.js"></script>
+<script src="data/objects-asteroids.js"></script>
+<script src="data/objects-comets.js"></script>
+<script src="data/objects-tnos.js"></script>
+<script src="data/objects.js"></script>
+<script src="data/sensors.js"></script>
+<script src="data/buses.js"></script>
+<script src="data/propulsion.js"></script>
+<script src="assets/core.js"></script>
+<script>
+VSS.mountChrome("rides.html");
+(function () {
+  var A = window.ASTRO;
+
+  document.getElementById("launchers").innerHTML = window.VSS_LAUNCHERS.map(function (l) {
+    return '<div class="card"><h3>' + l.name + "</h3>" +
+      '<p class="dim small">' + l.gloss + "</p>" +
+      '<dl class="kv"><dt>Burns</dt><dd>' + l.propellant + "</dd>" +
+      "<dt>Lifts to orbit</dt><dd>" + VSS.fmt(l.toLeoT, 1) + " tonnes</dd>" +
+      "<dt>Per flight</dt><dd>" + VSS.fmtAudFull(l.costUsdM) + "</dd></dl>" +
+      '<p class="faint">' + l.note + "</p></div>";
+  }).join("");
+
+  document.getElementById("engines").innerHTML = window.VSS_ENGINES.map(function (e) {
+    return '<div class="card"><h3>' + e.name + "</h3>" +
+      '<p class="dim small">' + e.gloss + "</p>" +
+      '<dl class="kv"><dt>Fuel</dt><dd>' + e.fuel + "</dd>" +
+      "<dt>Mileage</dt><dd>" + (e.ispS ? VSS.fmt(e.ispS) + " s specific impulse" : "no propellant used") + "</dd>" +
+      "<dt>Push style</dt><dd>" + (e.thrust === "kick" ? "kick: hard shove, minutes" : "patient: whisper push, months") + "</dd>" +
+      "<dt>Best for</dt><dd class='wrap'>" + e.bestFor + "</dd></dl>" +
+      '<p class="faint">' + e.status + "</p></div>";
+  }).join("");
+
+  // ---- calculator ----
+  var engine = "ion";
+  function renderChips() {
+    document.getElementById("calc-engines").innerHTML = window.VSS_ENGINES.filter(function (e) { return e.ispS > 0; }).map(function (e) {
+      return '<button class="chip" aria-pressed="' + (engine === e.id) + '" data-e="' + e.id + '">' + e.name + "</button>";
+    }).join("");
+    document.querySelectorAll("#calc-engines [data-e]").forEach(function (b) {
+      b.addEventListener("click", function () { engine = b.dataset.e; renderChips(); calc(); });
+    });
+  }
+
+  var errands = [];
+  function buildErrands() {
+    var defs = [
+      { label: "Brake into Mars orbit", target: "mars" },
+      { label: "Brake into the Jupiter system", target: "jupiter" },
+      { label: "Brake at Ceres", target: "ceres" },
+      { label: "Fast run to Pluto (+5 km/s over minimum, no brake)", fixed: A.fastTransfer(1, 39.48, 5).dvDep },
+      { label: "Ten years of station-keeping", fixed: 0.5 }
+    ];
+    defs.forEach(function (d) {
+      if (d.fixed !== undefined) { errands.push({ label: d.label, dv: d.fixed }); return; }
+      var o = window.VSS_BY_ID[d.target];
+      var ho = VSS.helioOrbitOf(o);
+      var t = A.fastTransfer(1, ho.aAU, 0);
+      var gm = A.gmOf(o);
+      var bands = A.stableBands(o, A.GM_SUN, ho.aAU * A.AU_KM);
+      var rPark = Math.max(bands.minKm * 1.6, bands.progradeMaxKm / 2); // wide capture, same rule as everywhere
+      errands.push({ label: d.label, dv: A.insertionDv(gm, t.vinfArr, rPark) });
+    });
+  }
+
+  function calc() {
+    var e = window.VSS_ENGINES.filter(function (x) { return x.id === engine; })[0];
+    var dry = +document.getElementById("dry").value;
+    var propPct = +document.getElementById("prop").value;
+    var mp = dry * propPct / 100;
+    document.getElementById("dry-out").textContent = dry + " kg";
+    document.getElementById("prop-out").textContent = VSS.fmt(mp, 0) + " kg (" + propPct + "% of dry)";
+    var dv = e.ispS * 9.81 * Math.log(1 + mp / dry) / 1000;
+    document.getElementById("dv-out").textContent = VSS.fmt(dv, 2) + " km/s";
+    document.getElementById("style-out").textContent = e.thrust === "kick"
+      ? "in hard burns of minutes: usable for insertions"
+      : "spread over months of whisper-thrust: superb for cruising, no good for a sudden brake";
+    document.getElementById("calc-note").textContent =
+      e.id === "neumann" ? "That mileage figure is the laboratory promise; flying it deep is the open engineering question, which is exactly why a design studio should model it." :
+      e.needsPower ? "Needs electrical power: strong sunlight or a nuclear source. Solar wings starve past Jupiter." : "";
+    var maxDv = Math.max(dv, 8);
+    document.getElementById("errands").innerHTML = errands.map(function (er) {
+      var ok = dv >= er.dv;
+      var pct = Math.min(100, er.dv / maxDv * 100);
+      return '<p class="small dim" style="margin-bottom:.15rem">' + er.label + " · " + VSS.fmt(er.dv, 1) + ' km/s · <span class="verdict ' + (ok ? "ok" : "bad") + '">' + (ok ? "within reach" : "beyond this tank") + "</span></p>" +
+        '<div class="meter" style="margin-bottom:.6rem"><i style="width:' + pct + '%"></i></div>';
+    }).join("");
+  }
+
+  buildErrands();
+  renderChips();
+  document.getElementById("dry").addEventListener("input", calc);
+  document.getElementById("prop").addEventListener("input", calc);
+  calc();
+})();
+</script>
+</body>
+</html>

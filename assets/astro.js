@@ -89,16 +89,58 @@
     return d < 1e-9 ? Infinity : 1 / d;
   }
 
-  /* Next Hohmann-style departure windows from Earth to a heliocentric target.
-     Phase-angle method on mean longitudes. Returns array of Dates. */
-  function nextWindows(earthOrbit, targetOrbit, fromDate, count) {
+  /* A faster-than-Hohmann transfer: burn tangentially at Earth's orbit with
+     extraKms beyond the minimum, ride the resulting ellipse (or hyperbola)
+     to the target's distance. Returns time of flight, required phase angle,
+     and the arrival speed that must be killed. extraKms = 0 reproduces Hohmann. */
+  function fastTransfer(a1AU, a2AU, extraKms) {
+    var r1 = a1AU * AU_KM, r2 = a2AU * AU_KM;
+    var out = r2 > r1;
+    var v1c = Math.sqrt(GM_SUN / r1);
+    var at = (r1 + r2) / 2;
+    var vHoh = Math.sqrt(GM_SUN * (2 / r1 - 1 / at));
+    var base = Math.abs(vHoh - v1c);
+    var burn = base + (extraKms || 0);
+    var v1 = out ? v1c + burn : Math.max(v1c - burn, 0.12 * v1c); // engines cannot fully stop you sunward
+    var eps = v1 * v1 / 2 - GM_SUN / r1;              // orbital energy
+    if (Math.abs(eps) < 1e-6) eps = -1e-6;            // dodge the exactly-parabolic case
+    var h = r1 * v1;                                   // angular momentum (tangential burn)
+    var a = -GM_SUN / (2 * eps);
+    var p = h * h / GM_SUN;
+    var e = Math.max(1e-6, Math.sqrt(Math.max(0, 1 + 2 * eps * h * h / (GM_SUN * GM_SUN))));
+    var cosNu = Math.min(1, Math.max(-1, (p / r2 - 1) / e));
+    var nu2 = Math.acos(cosNu);                        // true anomaly at arrival radius
+    var tofDays, dNuDeg;
+    if (eps < 0) {                                     // elliptic
+      var E2 = Math.acos(Math.min(1, Math.max(-1, (e + cosNu) / (1 + e * cosNu))));
+      var M2 = E2 - e * Math.sin(E2);
+      var n = Math.sqrt(GM_SUN / (a * a * a));         // rad/s
+      if (out) { tofDays = M2 / n / DAY_S; dNuDeg = nu2 / D2R; }
+      else { tofDays = (Math.PI - M2) / n / DAY_S; dNuDeg = 180 - nu2 / D2R; }
+    } else {                                           // hyperbolic (outbound fast runs)
+      var F2 = Math.acosh(Math.max(1, (e + cosNu) / (1 + e * cosNu)));
+      var Mh = e * Math.sinh(F2) - F2;
+      var nh = Math.sqrt(GM_SUN / Math.pow(-a, 3));
+      tofDays = Mh / nh / DAY_S; dNuDeg = nu2 / D2R;
+    }
+    var v2sq = 2 * (eps + GM_SUN / r2);
+    var vt2 = h / r2;
+    var vr2 = Math.sqrt(Math.max(0, v2sq - vt2 * vt2));
+    var vTarget = Math.sqrt(GM_SUN / r2);
+    var vinf = Math.sqrt((vt2 - vTarget) * (vt2 - vTarget) + vr2 * vr2);
+    return { tofYears: tofDays / YEAR_D, dvDep: burn, vinfArr: vinf, dNuDeg: dNuDeg, hyperbolic: eps > 0 };
+  }
+
+  /* Departure windows given an arbitrary transfer (phase-angle method on mean
+     longitudes): the target must lead Earth by dNu - (target motion during
+     the cruise) at the moment of departure. */
+  function windowsForTransfer(earthOrbit, targetOrbit, fromDate, count, transfer) {
     if (targetOrbit.hyperbolic) return [];
     var t0 = daysSinceJ2000(fromDate);
     var Pt = periodYearsOf(targetOrbit), Pe = periodYearsOf(earthOrbit);
     if (Math.abs(Pt - Pe) < 0.02) return []; // near-identical period, no clean synodic cycle
-    var h = hohmann(earthOrbit.aAU, targetOrbit.aAU);
     var nT = 360 / (Pt * YEAR_D), nE = 360 / (Pe * YEAR_D); // deg/day
-    var gamma = 180 - nT * (h.tofYears * YEAR_D); // required lead of target over Earth at departure
+    var gamma = transfer.dNuDeg - nT * (transfer.tofYears * YEAR_D);
     gamma = ((gamma % 360) + 360) % 360;
     var rel0 = meanLongitude(targetOrbit, t0) - meanLongitude(earthOrbit, t0);
     rel0 = ((rel0 % 360) + 360) % 360;
@@ -117,6 +159,71 @@
     out = out.filter(function (t) { return t >= 0; }).sort(function (a, b) { return a - b; }).slice(0, count);
     return out.map(function (t) { return dateFromDays(t0 + t); });
   }
+
+  /* Cheapest-path departure windows: the classic Hohmann phasing. */
+  function nextWindows(earthOrbit, targetOrbit, fromDate, count) {
+    return windowsForTransfer(earthOrbit, targetOrbit, fromDate, count,
+      fastTransfer(earthOrbit.aAU, targetOrbit.aAU, 0));
+  }
+
+  /* ---- The restricted three-body problem, planar, in the rotating frame ----
+     Normalised units: the two bodies sit at (-mu, 0) and (1-mu, 0), total
+     gravity 1, one rotation takes 2*pi. Gravity plus spin makes a landscape
+     with five ledges: the Lagrange points. */
+  var CR3BP = {
+    lagrangePoints: function (mu) {
+      function solve(x0) {
+        var x = x0;
+        for (var k = 0; k < 80; k++) {
+          var s1 = x + mu, s2 = x - 1 + mu;
+          var f = x - (1 - mu) * s1 / Math.pow(Math.abs(s1), 3) - mu * s2 / Math.pow(Math.abs(s2), 3);
+          var fp = 1 + 2 * (1 - mu) / Math.pow(Math.abs(s1), 3) + 2 * mu / Math.pow(Math.abs(s2), 3);
+          var dx = f / fp;
+          x -= dx;
+          if (Math.abs(dx) < 1e-12) break;
+        }
+        return x;
+      }
+      var c = Math.cbrt(mu / 3);
+      return {
+        L1: { x: solve(1 - mu - c), y: 0 },
+        L2: { x: solve(1 - mu + c), y: 0 },
+        L3: { x: solve(-1 - (5 / 12) * mu), y: 0 },
+        L4: { x: 0.5 - mu, y: Math.sqrt(3) / 2 },
+        L5: { x: 0.5 - mu, y: -Math.sqrt(3) / 2 }
+      };
+    },
+    /* Effective potential: gravity of both bodies plus the spin of the frame. */
+    omega: function (mu, x, y) {
+      var r1 = Math.hypot(x + mu, y), r2 = Math.hypot(x - 1 + mu, y);
+      return 0.5 * (x * x + y * y) + (1 - mu) / Math.max(r1, 1e-6) + mu / Math.max(r2, 1e-6);
+    },
+    accel: function (mu, x, y, vx, vy) {
+      var s1 = x + mu, s2 = x - 1 + mu;
+      var r13 = Math.pow(Math.max(Math.hypot(s1, y), 1e-5), 3);
+      var r23 = Math.pow(Math.max(Math.hypot(s2, y), 1e-5), 3);
+      return {
+        ax: x + 2 * vy - (1 - mu) * s1 / r13 - mu * s2 / r23,
+        ay: y - 2 * vx - (1 - mu) * y / r13 - mu * y / r23
+      };
+    },
+    /* One fixed-step RK4 integration step for a particle {x,y,vx,vy}. */
+    step: function (mu, p, dt) {
+      function d(s) {
+        var a = CR3BP.accel(mu, s[0], s[1], s[2], s[3]);
+        return [s[2], s[3], a.ax, a.ay];
+      }
+      var s0 = [p.x, p.y, p.vx, p.vy];
+      var k1 = d(s0);
+      var k2 = d(s0.map(function (v, i) { return v + dt / 2 * k1[i]; }));
+      var k3 = d(s0.map(function (v, i) { return v + dt / 2 * k2[i]; }));
+      var k4 = d(s0.map(function (v, i) { return v + dt * k3[i]; }));
+      p.x += dt / 6 * (k1[0] + 2 * k2[0] + 2 * k3[0] + k4[0]);
+      p.y += dt / 6 * (k1[1] + 2 * k2[1] + 2 * k3[1] + k4[1]);
+      p.vx += dt / 6 * (k1[2] + 2 * k2[2] + 2 * k3[2] + k4[2]);
+      p.vy += dt / 6 * (k1[3] + 2 * k2[3] + 2 * k3[3] + k4[3]);
+    }
+  };
 
   /* Next perihelion passages for a bound orbit, as Dates. Month-accurate for
      short periods, rougher for very stretched ones. */
@@ -167,6 +274,7 @@
     gmOf: gmOf, solveKepler: solveKepler, periodYearsOf: periodYearsOf,
     helioPos: helioPos, meanLongitude: meanLongitude,
     hohmann: hohmann, synodicYears: synodicYears, nextWindows: nextWindows, nextPerihelia: nextPerihelia,
+    fastTransfer: fastTransfer, windowsForTransfer: windowsForTransfer, CR3BP: CR3BP,
     hillRadiusKm: hillRadiusKm, circVel: circVel, orbPeriodHours: orbPeriodHours,
     insertionDv: insertionDv, stableBands: stableBands
   };

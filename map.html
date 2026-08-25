@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Orbit map : Virtual Solar Swarm</title>
-<meta name="description" content="Animated map of all 200 Virtual Solar Swarm targets, positioned by real orbital elements.">
+<meta name="description" content="Animated 3D map of all 200 Virtual Solar Swarm targets, positioned by real orbital elements. Drag to tilt and spin, scrub time forwards and back.">
 <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🛰️</text></svg>">
 <link rel="stylesheet" href="assets/style.css">
 </head>
@@ -12,7 +12,7 @@
 <header id="site-header"></header>
 <main>
   <h1>Orbit map</h1>
-  <p class="lede">Every heliocentric target, placed by its real orbital elements and moved by Kepler's laws. Moons ride with their parents; open a dossier to see them. The compressed scale keeps Mercury and Sedna on one screen, so remember the real gaps are far larger than they look.</p>
+  <p class="lede">Every heliocentric target, placed by its real orbital elements and moved by Kepler's laws, in three dimensions. Drag to tilt and spin the solar system; the tilted comets and the flat crowd of planets tell their own story. For gravity itself, Lagrange points and insertions, open the <a href="gravity.html">gravity lab</a>.</p>
 
   <div class="controls">
     <label>Time
@@ -32,12 +32,14 @@
       </select>
     </label>
     <button id="today">Jump to today</button>
-    <span class="faint">Click a dot for its dossier. Date: <strong id="date-out"></strong></span>
+    <button id="topdown">Top-down</button>
+    <button id="sideon">Side-on</button>
+    <span class="faint">Date: <strong id="date-out"></strong></span>
   </div>
 
   <div class="canvas-wrap">
     <canvas id="cv" width="1160" height="760"></canvas>
-    <div class="canvas-hud" id="hud">hover a dot…</div>
+    <div class="canvas-hud" id="hud">drag to tilt and spin · scroll to zoom · click a dot</div>
   </div>
 
   <div class="chip-row" id="legend"></div>
@@ -66,37 +68,41 @@ VSS.mountChrome("map.html");
   });
   var tierColour = { observatory: "#f0b429", swarm: "#38bdf8", enhanced: "#a78bfa", picket: "#7e8ca6", intercept: "#fb7185" };
 
+  // ---- camera ----
+  var yaw = 0.6, tilt = 0.95, zoom = 1;         // tilt 0 = top-down, ~1.48 = side-on
   var mode = "log";
+
   function rScale(rAU) {
-    if (mode === "lin40") return rAU * (Math.min(CX, CY) - 20) / 40;
-    if (mode === "lin6") return rAU * (Math.min(CX, CY) - 20) / 6;
-    return Math.log10(1 + rAU * 3) * (Math.min(CX, CY) - 20) / Math.log10(1 + 90 * 3);
+    var base = Math.min(CX, CY) - 20;
+    var px;
+    if (mode === "lin40") px = rAU * base / 40;
+    else if (mode === "lin6") px = rAU * base / 6;
+    else px = Math.log10(1 + rAU * 3) * base / Math.log10(1 + 90 * 3);
+    return px * zoom;
   }
+  /* scale a raw AU-space 3D point radially (keeps orbit shape and tilt),
+     then project through the yaw/tilt camera to screen px */
   function project(p) {
-    var r = Math.sqrt(p.x * p.x + p.y * p.y);
-    if (r < 1e-9) return { x: CX, y: CY };
-    var s = rScale(r) / r;
-    return { x: CX + p.x * s, y: CY - p.y * s };
+    var r = Math.sqrt(p.x * p.x + p.y * p.y + p.z * p.z);
+    var s = r < 1e-9 ? 0 : rScale(r) / r;
+    var X = p.x * s, Y = p.y * s, Z = p.z * s;
+    var cy = Math.cos(yaw), sy = Math.sin(yaw);
+    var x1 = X * cy - Y * sy, y1 = X * sy + Y * cy;
+    var ct = Math.cos(tilt), st = Math.sin(tilt);
+    return { x: CX + x1, y: CY - (y1 * ct + Z * st), flat: CY - y1 * ct };
   }
 
-  // pre-sample orbit paths per scale mode
-  var pathCache = {};
-  function pathsFor(m) {
-    if (pathCache[m]) return pathCache[m];
-    var out = bodies.map(function (o) {
-      var P = A.periodYearsOf(o.orbit) * 365.25;
-      var pts = [];
-      for (var k = 0; k <= 128; k++) {
-        var fake = { aAU: o.orbit.aAU, e: o.orbit.e, iDeg: o.orbit.iDeg, omDeg: o.orbit.omDeg, wDeg: o.orbit.wDeg, M0Deg: (k / 128) * 360, periodYears: 1e9 };
-        pts.push(project(A.helioPos(fake, 0)));
-      }
-      var path = new Path2D();
-      pts.forEach(function (p, idx) { idx ? path.lineTo(p.x, p.y) : path.moveTo(p.x, p.y); });
-      return path;
-    });
-    pathCache[m] = out;
-    return out;
-  }
+  // ---- static geometry caches (raw AU space; camera applied per frame) ----
+  var SAMPLES = 72;
+  var paths3 = bodies.map(function (o) {
+    var pts = [];
+    for (var k = 0; k <= SAMPLES; k++) {
+      var fake = { aAU: o.orbit.aAU, e: o.orbit.e, iDeg: o.orbit.iDeg, omDeg: o.orbit.omDeg, wDeg: o.orbit.wDeg, M0Deg: (k / SAMPLES) * 360, periodYears: 1e9 };
+      pts.push(A.helioPos(fake, 0));
+    }
+    return pts;
+  });
+  var RINGS = [1, 5.2, 30.1];   // Earth, Jupiter, Neptune distances, drawn in the ecliptic plane
 
   var tDays = A.daysSinceJ2000(new Date());
   var speed = 60; // days per second
@@ -105,19 +111,33 @@ VSS.mountChrome("map.html");
 
   function draw() {
     ctx.clearRect(0, 0, W, H);
-    // faint star field
     ctx.fillStyle = "rgba(220,229,245,.07)";
-    for (var s = 0; s < 90; s++) {
-      var sx = (s * 971) % W, sy = (s * 613) % H;
-      ctx.fillRect(sx, sy, 1, 1);
-    }
-    var paths = pathsFor(mode);
+    for (var s = 0; s < 90; s++) ctx.fillRect((s * 971) % W, (s * 613) % H, 1, 1);
+
+    // ecliptic reference rings
+    ctx.strokeStyle = "rgba(76,201,240,.10)"; ctx.lineWidth = 1;
+    RINGS.forEach(function (rr) {
+      ctx.beginPath();
+      for (var k = 0; k <= 90; k++) {
+        var a = k / 90 * 2 * Math.PI;
+        var p = project({ x: Math.cos(a) * rr, y: Math.sin(a) * rr, z: 0 });
+        k ? ctx.lineTo(p.x, p.y) : ctx.moveTo(p.x, p.y);
+      }
+      ctx.stroke();
+    });
+
+    // orbit paths
     bodies.forEach(function (o, i) {
       var major = o.cls === "planet" || o.cls === "dwarf";
       ctx.strokeStyle = major ? "rgba(140,155,184,.35)" : "rgba(140,155,184,.10)";
-      ctx.lineWidth = 1;
-      ctx.stroke(paths[i]);
+      ctx.beginPath();
+      paths3[i].forEach(function (q, k) {
+        var p = project(q);
+        k ? ctx.lineTo(p.x, p.y) : ctx.moveTo(p.x, p.y);
+      });
+      ctx.stroke();
     });
+
     // Sun
     ctx.fillStyle = "#f0b429";
     ctx.beginPath(); ctx.arc(CX, CY, 5, 0, 7); ctx.fill();
@@ -126,8 +146,14 @@ VSS.mountChrome("map.html");
 
     dots = [{ o: window.VSS_BY_ID.sun, x: CX, y: CY }];
     bodies.forEach(function (o) {
-      var p = project(A.helioPos(o.orbit, tDays));
+      var q = A.helioPos(o.orbit, tDays);
+      var p = project(q);
       var major = o.cls === "planet";
+      // stem from the ecliptic plane, so height above and below the flat is readable
+      if ((major || o.cls === "dwarf") && Math.abs(p.y - p.flat) > 2) {
+        ctx.strokeStyle = "rgba(140,155,184,.3)"; ctx.lineWidth = 1;
+        ctx.beginPath(); ctx.moveTo(p.x, p.flat); ctx.lineTo(p.x, p.y); ctx.stroke();
+      }
       ctx.fillStyle = tierColour[o.tier] || "#7e8ca6";
       ctx.beginPath(); ctx.arc(p.x, p.y, major ? 4 : 2.2, 0, 7); ctx.fill();
       if (major || o.id === "pluto") {
@@ -145,18 +171,56 @@ VSS.mountChrome("map.html");
       A.dateFromDays(tDays).toLocaleDateString("en-AU", { day: "numeric", month: "short", year: "numeric" });
   }
 
-  var last = performance.now();
+  var last = performance.now(), needsDraw = true;
   function tick(now) {
     var dt = (now - last) / 1000; last = now;
-    if (speed > 0) { tDays += speed * dt; draw(); }
+    if (speed > 0) { tDays += speed * dt; needsDraw = true; }
+    if (needsDraw) { draw(); needsDraw = false; }
     requestAnimationFrame(tick);
   }
   draw();
   requestAnimationFrame(tick);
 
   document.getElementById("speed").addEventListener("change", function (e) { speed = +e.target.value; });
-  document.getElementById("scale").addEventListener("change", function (e) { mode = e.target.value; draw(); });
-  document.getElementById("today").addEventListener("click", function () { tDays = A.daysSinceJ2000(new Date()); draw(); });
+  document.getElementById("scale").addEventListener("change", function (e) { mode = e.target.value; needsDraw = true; });
+  document.getElementById("today").addEventListener("click", function () { tDays = A.daysSinceJ2000(new Date()); needsDraw = true; });
+  document.getElementById("topdown").addEventListener("click", function () { tilt = 0; needsDraw = true; });
+  document.getElementById("sideon").addEventListener("click", function () { tilt = 1.45; needsDraw = true; });
+
+  // ---- drag to rotate, wheel to zoom, touch friendly ----
+  var dragging = false, lastX = 0, lastY = 0, moved = 0, pinch0 = 0, zoom0 = 1;
+  function startDrag(x, y) { dragging = true; lastX = x; lastY = y; moved = 0; }
+  function moveDrag(x, y) {
+    if (!dragging) return;
+    yaw += (x - lastX) * 0.006;
+    tilt = Math.min(1.48, Math.max(0, tilt + (y - lastY) * 0.006));
+    moved += Math.abs(x - lastX) + Math.abs(y - lastY);
+    lastX = x; lastY = y; needsDraw = true;
+  }
+  cv.addEventListener("mousedown", function (e) { startDrag(e.clientX, e.clientY); });
+  window.addEventListener("mousemove", function (e) { moveDrag(e.clientX, e.clientY); });
+  window.addEventListener("mouseup", function () { dragging = false; });
+  cv.addEventListener("wheel", function (e) {
+    e.preventDefault();
+    zoom = Math.min(5, Math.max(0.4, zoom * (e.deltaY < 0 ? 1.12 : 0.89)));
+    needsDraw = true;
+  }, { passive: false });
+  cv.addEventListener("touchstart", function (e) {
+    if (e.touches.length === 1) startDrag(e.touches[0].clientX, e.touches[0].clientY);
+    if (e.touches.length === 2) {
+      pinch0 = Math.hypot(e.touches[0].clientX - e.touches[1].clientX, e.touches[0].clientY - e.touches[1].clientY);
+      zoom0 = zoom;
+    }
+  }, { passive: true });
+  cv.addEventListener("touchmove", function (e) {
+    if (e.touches.length === 1) moveDrag(e.touches[0].clientX, e.touches[0].clientY);
+    if (e.touches.length === 2) {
+      var d = Math.hypot(e.touches[0].clientX - e.touches[1].clientX, e.touches[0].clientY - e.touches[1].clientY);
+      zoom = Math.min(5, Math.max(0.4, zoom0 * d / pinch0));
+    }
+    needsDraw = true; e.preventDefault();
+  }, { passive: false });
+  window.addEventListener("touchend", function () { dragging = false; });
 
   function nearest(ev) {
     var rect = cv.getBoundingClientRect();
@@ -170,28 +234,29 @@ VSS.mountChrome("map.html");
     return best;
   }
   cv.addEventListener("mousemove", function (ev) {
+    if (dragging) return;
     var b = nearest(ev);
     document.getElementById("hud").textContent = b
-      ? b.o.name + " · " + (VSS.CLS_LABEL[b.o.cls] || b.o.cls) + (b.o.orbit && b.o.orbit.aAU ? " · " + VSS.fmt(b.o.orbit.aAU, 1) + " AU" : "")
-      : "hover a dot…";
-    cv.style.cursor = b ? "pointer" : "default";
+      ? b.o.name + " · " + (VSS.CLS_LABEL[b.o.cls] || b.o.cls) + (b.o.orbit && b.o.orbit.aAU ? " · " + VSS.fmt(b.o.orbit.aAU, 1) + " AU · tilt " + VSS.fmt(b.o.orbit.iDeg, 0) + "°" : "")
+      : "drag to tilt and spin · scroll to zoom · click a dot";
+    cv.style.cursor = b ? "pointer" : "grab";
   });
   cv.addEventListener("click", function (ev) {
+    if (moved > 6) return; // that was a drag, not a click
     var b = nearest(ev);
     var box = document.getElementById("pick");
-    if (!b) { picked = null; box.style.display = "none"; draw(); return; }
+    if (!b) { picked = null; box.style.display = "none"; needsDraw = true; return; }
     picked = b.o.id;
     box.style.display = "";
     box.innerHTML = "<h3>" + b.o.name + '</h3><p class="dim small">' + (b.o.why || "") + "</p>" +
       '<p class="small"><span class="badge t-' + b.o.tier + '">' + VSS.TIERS[b.o.tier].label + "</span> &nbsp; " +
       '<a href="object.html?id=' + b.o.id + '">Open dossier →</a></p>';
-    draw();
+    needsDraw = true;
   });
 
-  // legend
   document.getElementById("legend").innerHTML = Object.keys(tierColour).map(function (t) {
     return '<span class="chip" style="cursor:default"><span class="dot" style="background:' + tierColour[t] + '"></span>' + VSS.TIERS[t].label + "</span>";
-  }).join("") + '<span class="chip" style="cursor:default"><span class="dot" style="background:#f0b429"></span>the Sun</span>';
+  }).join("") + '<span class="chip" style="cursor:default"><span class="dot" style="background:#f0b429"></span>the Sun</span><span class="chip" style="cursor:default">faint rings mark 1, 5.2 and 30 AU on the flat of the system</span>';
 })();
 </script>
 </body>
