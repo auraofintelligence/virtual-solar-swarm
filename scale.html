@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>The scale : Virtual Solar Swarm</title>
-<meta name="description" content="Every number in the study as one dial: fleet allocation solved at any scale, tested against two gates: does it disrupt the solar system, and does it earn its keep for humanity.">
+<meta name="description" content="The fleet total and the allocation policy as dials you set yourself, with the downstream numbers computed live: production pace, cost, coverage, traffic and data.">
 <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🛰️</text></svg>">
 <link rel="stylesheet" href="assets/style.css">
 </head>
@@ -12,54 +12,66 @@
 <header id="site-header"></header>
 <main>
   <h1>The scale</h1>
-  <p class="lede">No hard rule says 200 targets, or four satellites to a picket, or 1,300 in the fleet. Those are starting points, the place a long idea began counting. This page treats every number in the study as one dial, solves the allocation at any setting, and holds the result against the two questions that decide whether a thing like this deserves to exist.</p>
+  <p class="lede">No rule fixes 200 targets, or four satellites to a picket, or 1,300 in the fleet; those are where this study started counting. On this page both the fleet total and the policy for spending it are dials in your hands. The page does the arithmetic and shows you what each setting changes; what any of it is worth is yours to weigh.</p>
 
-  <div class="callout warm">
-    The two gates. <strong>One:</strong> it must not disrupt the solar system: no wreckage, no crowding, no contaminated oceans, no commons spoiled. <strong>Two:</strong> it must earn its keep: warnings that protect people, custody of the hazards, knowledge given freely, a door answered when the galaxy sends a visitor. A network that passes both gates at some scale has made its case to be built; one that cannot, has not.
-  </div>
-
-  <div class="controls" style="margin-top:1.6rem">
-    <label style="flex:1; min-width:260px">Fleet dial
+  <h2>Your fleet</h2>
+  <div class="controls">
+    <label style="flex:1; min-width:260px">Fleet total
       <input type="range" id="F" min="0" max="1000" value="500" style="width:100%; max-width:520px">
     </label>
     <span class="stat" id="F-out" style="min-width:130px">·</span>
   </div>
   <div class="chip-row">
-    <button class="chip" data-f="150">Triage</button>
-    <button class="chip" data-f="1332">The starting point</button>
-    <button class="chip" data-f="8000">Census lit</button>
-    <button class="chip" data-f="20000">Deep abundance</button>
+    <button class="chip" data-f="150">150</button>
+    <button class="chip" data-f="1332">1,332 (the starting point)</button>
+    <button class="chip" data-f="8000">8,000</button>
+    <button class="chip" data-f="20000">20,000</button>
   </div>
 
+  <h2>Your allocation policy</h2>
+  <p class="dim small">How the fleet is spent is a policy, not a law of the model. These are the same knobs the study's starting design chose one way; choose them your way. <button id="reset-policy" class="chip">Reset to the starting policy</button></p>
+  <div class="grid cols-3">
+    <div class="card"><p><label>Solar observatory share <input type="range" id="p-obs" min="0" max="30" step="0.5" value="7.5"></label> <strong id="p-obs-out"></strong></p><p class="faint">Portion of the whole fleet wrapped around the Sun.</p></div>
+    <div class="card"><p><label>Swarm strength <input type="range" id="p-swarm" min="4" max="200" value="50"></label> <strong id="p-swarm-out"></strong></p><p class="faint">Satellites at each of the seven priority worlds.</p></div>
+    <div class="card"><p><label>Enhanced picket strength <input type="range" id="p-enh" min="2" max="60" value="12"></label> <strong id="p-enh-out"></strong></p><p class="faint">Satellites at each of the fifteen enhanced targets.</p></div>
+    <div class="card"><p><label>Baseline picket strength <input type="range" id="p-picket" min="1" max="16" value="4"></label> <strong id="p-picket-out"></strong></p><p class="faint">Satellites per ordinary station; four gives all-angle coverage.</p></div>
+    <div class="card"><p><label>Interceptors held ready <input type="range" id="p-int" min="0" max="12" value="6"></label> <strong id="p-int-out"></strong></p><p class="faint">Fuelled and waiting for interstellar visitors.</p></div>
+    <div class="card">
+      <p><label>Fill order
+        <select id="p-order">
+          <option value="shipped" selected>as the study shipped</option>
+          <option value="hazard">near-Earth rocks first</option>
+          <option value="nearest">nearest first</option>
+          <option value="largest">largest first</option>
+        </select></label></p>
+      <p><label><input type="checkbox" id="p-grow" checked> stations grow with the fleet</label></p>
+      <p class="faint">Which bodies get pickets first as the budget moves, and whether station sizes scale or hold fixed.</p>
+    </div>
+  </div>
+
+  <h2>What your settings build</h2>
   <div class="grid cols-4">
     <div class="card"><div class="stat" id="s-funded">·</div><div class="stat-label">bodies with dedicated watchers</div></div>
     <div class="card"><div class="stat" id="s-repl">·</div><div class="stat-label">factory pace, satellites / year</div></div>
     <div class="card"><div class="stat" id="s-cost">·</div><div class="stat-label">fleet hardware cost</div></div>
-    <div class="card"><div class="stat" id="s-data">·</div><div class="stat-label">open data / day</div></div>
-  </div>
-
-  <h2>What the dial buys</h2>
-  <div class="table-wrap">
-    <table><thead><tr><th>Station type</th><th class="num">Satellites each</th><th>At this scale</th></tr></thead>
-    <tbody id="alloc-rows"></tbody></table>
+    <div class="card"><div class="stat" id="s-data">·</div><div class="stat-label">observations home / day</div></div>
   </div>
   <p class="dim small" id="alloc-note"></p>
 
   <div class="grid cols-2">
     <div class="card">
-      <h3>Gate one · leave the solar system unharmed</h3>
-      <p id="gate1-verdict"></p>
-      <ul id="gate1-rows" style="list-style:none; display:grid; gap:.6rem"></ul>
+      <h3>Would it disturb the solar system? The numbers to weigh:</h3>
+      <dl class="kv" id="disturb-rows"></dl>
+      <p class="faint">The modelled design also carries two standing commitments at every scale: a funded end-of-life plan before any satellite activates, and orbit-only, sterilised operations at the ocean moons under planetary-protection rules.</p>
     </div>
     <div class="card">
-      <h3>Gate two · earn its keep <span class="dim" id="gate2-score"></span></h3>
-      <ul id="gate2-rows" style="list-style:none; display:grid; gap:.6rem"></ul>
+      <h3>What would it give back? The numbers to weigh:</h3>
+      <dl class="kv" id="give-rows"></dl>
+      <p class="faint">The source design argues that many solar vantage points would stretch storm warnings from about an hour toward days; that claim rides on the coverage number above and is theirs to defend.</p>
     </div>
   </div>
 
-  <h2>What this page is, honestly</h2>
-  <p class="dim">This is the highest-altitude, lowest-fidelity model on the site: proportional scaling laws pinned so the dial at 1,332 reproduces the starting design exactly, with priority-ranked promotion of the census as the budget grows. Its job is to make the shape of the question computable, not to settle it. The finer pages (<a href="fleet.html">fleet</a>, <a href="cadence.html">cadence</a>, <a href="convoys.html">convoys</a>, <a href="network.html">network</a>) currently run at the starting point; solving the whole system to a fidelity worth building is the actual project, and every model here is a rung toward it.</p>
-  <p class="dim">The compass the study steers by: a network like this is worth building only if it empowers joyful, responsible abundance for humanity and its place in the galaxy, and harms nothing on the way. That is the standard both gates are trying to measure, in <a href="https://gajra.earth">so many words</a>.</p>
+  <p class="faint">Scaling laws here are pinned to the starting point and are teaching-grade, like everything on this site; the finer pages (<a href="fleet.html">fleet</a>, <a href="cadence.html">cadence</a>, <a href="convoys.html">convoys</a>, <a href="network.html">network</a>) currently run at the starting point.</p>
 </main>
 <footer id="site-footer"></footer>
 <script src="assets/astro.js"></script>
@@ -93,61 +105,80 @@ VSS.mountChrome("scale.html");
   }
   function fToSlider(F) { return Math.round(1000 * (Math.log(F) - FMIN) / (FMAX - FMIN)); }
 
-  var tierWords = {
-    observatory: "The solar observatory",
-    swarm: "Priority swarms (each of 7 worlds)",
-    enhanced: "Enhanced pickets (each of 15)",
-    picket: "Baseline pickets",
-    intercept: "Interceptors (each visitor class)"
-  };
+  function readPolicy() {
+    return {
+      obsSharePct: +document.getElementById("p-obs").value,
+      swarmN: +document.getElementById("p-swarm").value,
+      enhN: +document.getElementById("p-enh").value,
+      picketN: +document.getElementById("p-picket").value,
+      interceptors: +document.getElementById("p-int").value,
+      scaleStations: document.getElementById("p-grow").checked,
+      order: document.getElementById("p-order").value
+    };
+  }
+  function writePolicy(p) {
+    document.getElementById("p-obs").value = p.obsSharePct;
+    document.getElementById("p-swarm").value = p.swarmN;
+    document.getElementById("p-enh").value = p.enhN;
+    document.getElementById("p-picket").value = p.picketN;
+    document.getElementById("p-int").value = p.interceptors;
+    document.getElementById("p-grow").checked = p.scaleStations;
+    document.getElementById("p-order").value = p.order;
+  }
 
   function render() {
     var F = sliderToF();
+    var p = readPolicy();
     document.getElementById("F-out").textContent = VSS.fmt(F) + " satellites";
-    var a = S.allocate(F);
+    document.getElementById("p-obs-out").textContent = p.obsSharePct + "%";
+    document.getElementById("p-swarm-out").textContent = p.swarmN + " each";
+    document.getElementById("p-enh-out").textContent = p.enhN + " each";
+    document.getElementById("p-picket-out").textContent = p.picketN + " each";
+    document.getElementById("p-int-out").textContent = String(p.interceptors);
+
+    var a = S.allocate(F, p);
     var sys = S.systems(a);
-    var g1 = S.disruptionGate(a, sys);
-    var g2 = S.worthGate(a, sys);
 
     document.getElementById("s-funded").textContent = VSS.fmt(a.funded) + " / 384";
     document.getElementById("s-repl").textContent = VSS.fmt(sys.replPerYear, 0);
     document.getElementById("s-cost").textContent = "A$" + VSS.fmt(sys.costUsdB * VSS.AUD_PER_USD, 1) + "b";
     document.getElementById("s-data").textContent = VSS.fmt(sys.dataTBday, 0) + " TB";
 
-    document.getElementById("alloc-rows").innerHTML = Object.keys(tierWords).map(function (t) {
-      return "<tr><td>" + tierWords[t] + "</td><td class='num'>" + VSS.fmt(a.tiers[t]) + "</td>" +
-        "<td class='wrap dim small'>" +
-        (t === "picket"
-          ? (a.unfundedPickets > 0
-            ? a.unfundedPickets + " of the starting pickets go unfunded at this scale; triage by priority."
-            : a.promoted > 0
-              ? "all starting pickets funded, plus " + a.promoted + " census bodies promoted to watchers of their own."
-              : "exactly the starting line-up.")
-          : "") + "</td></tr>";
-    }).join("");
+    var picketLine = a.unfundedPickets > 0
+      ? a.unfundedPickets + " of the starting picket targets go unfunded under these settings"
+      : a.promoted > 0
+        ? "all starting pickets funded, plus " + VSS.fmt(a.promoted) + " census bodies given watchers of their own"
+        : "exactly the starting line-up of funded targets";
     document.getElementById("alloc-note").textContent =
-      (a.notes[0] || "") + " A launch rides out roughly every " +
-      (isFinite(sys.launchEveryDays) ? VSS.fmt(sys.launchEveryDays, 1) + " days at steady state" : "·") +
-      ", and the whole fleet would fly as about " + VSS.fmt(sys.convoys) + " convoys. Costs converted at 1 USD to A$1.55, August 2026, hardware only.";
+      "Under these settings: " + picketLine + ". " + (a.notes[0] || "") +
+      " Steady state needs a launch roughly every " +
+      (isFinite(sys.launchEveryDays) ? VSS.fmt(sys.launchEveryDays, 1) + " days" : "·") +
+      ", flying as about " + VSS.fmt(sys.convoys) + " convoys. Costs converted at 1 USD to A$1.55, August 2026, hardware only.";
 
-    var v = g1.verdict;
-    document.getElementById("gate1-verdict").innerHTML = v === "ok"
-      ? '<span class="verdict ok">✓ Passes at this scale.</span> <span class="dim small">The solar system barely notices; the one place needing real care is our own doorstep.</span>'
-      : v === "warn" ? '<span class="verdict warn">△ Passes with conditions.</span> <span class="dim small">The home shell now needs serious traffic discipline.</span>'
-        : '<span class="verdict bad">✕ Fails at this scale,</span> <span class="dim small">and it fails at Earth first.</span>';
-    document.getElementById("gate1-rows").innerHTML = g1.checks.map(function (c) {
-      var icon = c.level === "ok" ? "✓" : c.level === "warn" ? "△" : "✕";
-      return '<li><span class="verdict ' + c.level + '">' + icon + "</span> <strong>" + c.title + ".</strong> <span class='dim small'>" + c.text + "</span></li>";
-    }).join("");
+    document.getElementById("disturb-rows").innerHTML =
+      "<dt>Room taken</dt><dd>one satellite per " + (sys.kmCubedPerSat / 1e27).toExponential(1).replace("e+", " × 10^") + " cubic kilometres, across a 40 AU sphere</dd>" +
+      "<dt>Earth's doorstep</dt><dd>" + VSS.fmt(sys.inEarthSpace) + " satellites in Earth and Moon space, alongside roughly ten thousand active there today</dd>" +
+      "<dt>Ocean-moon traffic</dt><dd>" + VSS.fmt(sys.oceanWorlds) + " orbiters at Europa and Enceladus under these settings</dd>" +
+      "<dt>Hardware placed</dt><dd>" + VSS.fmt(a.fleet) + " satellites, " + VSS.fmt(sys.replPerYear, 0) + " replaced each year</dd>";
 
-    document.getElementById("gate2-score").textContent = "· " + g2.met + " of " + g2.total + " earned";
-    document.getElementById("gate2-rows").innerHTML = g2.rows.map(function (r) {
-      return '<li><span class="verdict ' + (r.met ? "ok" : "warn") + '">' + (r.met ? "✓" : "·") + "</span> <strong>" + r.title + ".</strong> <span class='dim small'>" + r.text + "</span></li>";
-    }).join("");
+    document.getElementById("give-rows").innerHTML =
+      "<dt>Eyes on the Sun</dt><dd>" + VSS.fmt(sys.sunN) + " vantage points" + (sys.sunN >= 12 ? ", enough for all sides of the Sun at once in this model" : "; below about twelve, this model still has blind sides") + "</dd>" +
+      "<dt>Near-Earth rocks watched</dt><dd>" + sys.neaFunded + " of the " + sys.neaTotal + " catalogued, continuously</dd>" +
+      "<dt>Bodies with watchers</dt><dd>" + VSS.fmt(a.funded) + " of 384 (" + VSS.fmt(a.funded / 384 * 100, 0) + " per cent of the catalogue)</dd>" +
+      "<dt>Open observations</dt><dd>about " + VSS.fmt(sys.dataTBday, 0) + " terabytes a day, published for anyone</dd>" +
+      "<dt>Visitor readiness</dt><dd>" + VSS.fmt(sys.interceptorsReady) + " interceptors fuelled for the next interstellar arrival</dd>";
   }
 
   slider.value = fToSlider(1332);
-  slider.addEventListener("input", render);
+  writePolicy(S.DEFAULT_POLICY);
+  ["F", "p-obs", "p-swarm", "p-enh", "p-picket", "p-int"].forEach(function (id) {
+    document.getElementById(id).addEventListener("input", render);
+  });
+  document.getElementById("p-order").addEventListener("change", render);
+  document.getElementById("p-grow").addEventListener("change", render);
+  document.getElementById("reset-policy").addEventListener("click", function () {
+    writePolicy(S.DEFAULT_POLICY); render();
+  });
   document.querySelectorAll(".chip[data-f]").forEach(function (b) {
     b.addEventListener("click", function () { slider.value = fToSlider(+b.dataset.f); render(); });
   });

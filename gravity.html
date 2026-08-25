@@ -183,7 +183,7 @@ VSS.mountChrome("gravity.html");
     document.getElementById("ledges").innerHTML =
       "<dt>L1</dt><dd>" + VSS.fmtKm(d1) + " inside " + pair.sec.name + "'s orbit; the doorway between the two wells</dd>" +
       "<dt>L2</dt><dd>" + VSS.fmtKm(d2) + " beyond " + pair.sec.name + "; quiet sky, whole-system view</dd>" +
-      "<dt>L3</dt><dd>on the far side of " + pair.pri.name + ", forever hidden from " + pair.sec.name + "</dd>" +
+      "<dt>L3</dt><dd>on the far side of " + pair.pri.name + ", kept out of sight of " + pair.sec.name + "</dd>" +
       "<dt>L4 and L5</dt><dd>60° ahead of and behind " + pair.sec.name + " on its own orbit; the stable hilltops</dd>";
     document.getElementById("ledge-note").textContent = eg;
   }
@@ -195,7 +195,7 @@ VSS.mountChrome("gravity.html");
     var p = null;
     if (name === "tadpole") {
       p = { x: Lpts.L4.x + 0.02, y: Lpts.L4.y, vx: 0, vy: 0, tag: "tadpole" };
-      setStatus("Dropped at rest just off L4. Coriolis steering bends its fall into a looping tadpole that never leaves the hilltop region.");
+      setStatus("Dropped at rest just off L4. Coriolis steering bends its fall into a looping tadpole that stays around the hilltop region.");
     } else if (name === "ledge") {
       p = { x: Lpts.L1.x, y: 0, vx: 0, vy: 0, tag: "L1" };
       setStatus("Parked exactly on the L1 saddle. Balanced, not held: watch it slide off the ridge after a while. Real missions station-keep here.");

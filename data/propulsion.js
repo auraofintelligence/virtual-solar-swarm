@@ -21,7 +21,7 @@ window.VSS_ENGINES = [
   { id: "chem", name: "Chemical kick stage", fuel: "methane or storable propellants", ispS: 320,
     thrust: "kick", costUsdM: 0.3, needsPower: false,
     status: "The flown workhorse: every orbit insertion in history so far has ended with one of these.",
-    gloss: "Burns minutes at a time with a hard shove. Terrible fuel mileage, unbeatable when the burn must happen right now, like braking into orbit.",
+    gloss: "Burns minutes at a time with a hard shove. Terrible fuel mileage, hard to beat when the burn must happen right now, like braking into orbit.",
     bestFor: "capture burns, plane changes, the last kilometre of every journey" },
   { id: "ion", name: "Solar-electric ion", fuel: "xenon or krypton gas", ispS: 2500,
     thrust: "patient", costUsdM: 0.5, needsPower: true,
@@ -46,7 +46,7 @@ window.VSS_ENGINES = [
   { id: "sail", name: "Solar sail", fuel: "none: sunlight itself", ispS: 0,
     thrust: "patient", costUsdM: 0.2, needsPower: false,
     status: "Flown: IKAROS sailed to Venus distance, LightSail flew on sunlight in Earth orbit.",
-    gloss: "A mirror the size of a footy field, pushed by light. No propellant at all, so the delta-v never runs out; but the push fades with distance and a sail cannot brake into orbit at the far end.",
+    gloss: "A mirror the size of a footy field, pushed by light. No propellant at all, so the speed change is not limited by any tank; but the push fades with distance and a sail cannot brake into orbit at the far end.",
     bestFor: "inner-system couriers and sun-watching stations that never need to stop" }
 ];
 
