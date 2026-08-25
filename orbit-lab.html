@@ -106,6 +106,7 @@
 <script src="data/sensors.js"></script>
 <script src="data/buses.js"></script>
 <script src="data/rotation.js"></script>
+<script src="data/maps.js"></script>
 <script src="assets/core.js"></script>
 <script src="assets/art.js"></script>
 <script>
@@ -127,7 +128,7 @@ VSS.mountChrome("orbit-lab.html");
     sel.appendChild(og);
   });
 
-  var cur, bands, gm, vinf, rot, rSync, j2, bodyYear, parent, tint, obliq, magTilt, noField, sunAz, swVec;
+  var cur, bands, gm, vinf, rot, rSync, j2, bodyYear, parent, tint, obliq, magTilt, noField, sunAz, swVec, curMap;
   var texData = null, texW = 0, texH = 0, sph = null;
   var advanced = false, scaleMode = "log";
   var slider = document.getElementById("r"), incS = document.getElementById("inc");
@@ -219,11 +220,24 @@ VSS.mountChrome("orbit-lab.html");
     var pos = A.helioPos(ho, A.daysSinceJ2000(new Date()));
     sunAz = Math.atan2(-pos.y, -pos.x);
     trail = []; M = 0; lambda = 0;
-    // this body's surface skin, generated once, and the sunlight direction
-    var texCvs = window.VSS_ART.texture(cur);
-    texW = texCvs.width; texH = texCvs.height;
-    texData = texCvs.getContext("2d").getImageData(0, 0, texW, texH).data;
-    sph = null;
+    // the real map, where humanity has one; nothing invented
+    texData = null; sph = null;
+    curMap = window.VSS_MAPS[cur.id] || null;
+    if (curMap) {
+      var imEl = new Image();
+      var forId = cur.id;
+      imEl.onload = function () {
+        if (!cur || cur.id !== forId) return;
+        var mc = document.createElement("canvas");
+        mc.width = 1024; mc.height = 512;
+        var mctx = mc.getContext("2d");
+        mctx.drawImage(imEl, 0, 0, 1024, 512);
+        texW = 1024; texH = 512;
+        texData = mctx.getImageData(0, 0, texW, texH).data;
+        sph = null;
+      };
+      imEl.src = curMap.file;
+    }
 
     document.getElementById("b-hill").textContent = VSS.fmtKm(bands.hillKm);
     document.getElementById("b-min").textContent = VSS.fmtKm(bands.minKm) + " from centre";
@@ -256,6 +270,9 @@ VSS.mountChrome("orbit-lab.html");
     rows += "<dt>Magnetic field</dt><dd>" + (magTilt !== undefined
       ? "a global field, its axis leaning " + VSS.fmt(magTilt, 1) + "° off the spin axis"
       : noField ? noField : "not measured") + "</dd>";
+    rows += "<dt>Its map</dt><dd>" + (curMap
+      ? "wearing humanity's real map of it (" + curMap.credit + ")"
+      : "no real map aboard this site yet, so the globe stays honestly plain rather than wearing an invented skin; for many of the smaller bodies no full map exists at all, and making them is the swarm's job") + "</dd>";
 
     if (rot && rot.locked) {
       rows += "<dt>Stationary orbit</dt><dd>its day equals its lap of " + parent.name +
