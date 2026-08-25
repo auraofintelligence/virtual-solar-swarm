@@ -292,7 +292,13 @@ VSS.mountChrome("builder.html");
   document.getElementById("load").addEventListener("click", function () {
     try {
       var s = JSON.parse(localStorage.getItem("vss-build"));
-      if (s && window.VSS_BY_ID[s.target]) { state = s; sel.value = s.target; render(); }
+      if (s && window.VSS_BY_ID[s.target]) {
+        s.engine = s.engine || "ion";
+        s.propPct = s.propPct || 60;
+        state = s; sel.value = s.target;
+        document.getElementById("prop").value = s.propPct;
+        render();
+      }
     } catch (e) {}
   });
 
