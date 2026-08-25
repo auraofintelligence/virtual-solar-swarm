@@ -67,10 +67,24 @@ VSS.mountChrome("fleet.html");
     var m = VSS.TIERS[t], r = ranges[t];
     var count = window.VSS_OBJECTS.filter(function (o) { return o.tier === t; }).length;
     return '<div class="card"><h3><span class="badge t-' + t + '">' + m.label + "</span></h3>" +
-      '<p class="faint">' + count + " target" + (count === 1 ? "" : "s") + " in this tier</p>" +
+      '<p class="faint"><button class="chip" data-show="' + t + '" aria-pressed="false">' + count + " target" + (count === 1 ? "" : "s") + " in this tier · see who</button></p>" +
       '<p><input type="range" id="dial-' + t + '" min="' + r[0] + '" max="' + r[1] + '" value="' + sizes[t] + '"> ' +
-      '<strong id="val-' + t + '">' + sizes[t] + "</strong> satellites each</p></div>";
+      '<strong id="val-' + t + '">' + sizes[t] + "</strong> satellites each</p>" +
+      '<div class="chip-row" id="who-' + t + '" style="display:none"></div></div>';
   }).join("");
+  document.querySelectorAll("[data-show]").forEach(function (b) {
+    b.addEventListener("click", function () {
+      var t = b.dataset.show;
+      var box = document.getElementById("who-" + t);
+      var open = box.style.display !== "none";
+      box.style.display = open ? "none" : "";
+      b.setAttribute("aria-pressed", String(!open));
+      if (!open && !box.innerHTML) {
+        box.innerHTML = window.VSS_OBJECTS.filter(function (o) { return o.tier === t; })
+          .map(function (o) { return '<a class="chip" style="text-decoration:none" href="object.html?id=' + o.id + '">' + o.name + "</a>"; }).join("");
+      }
+    });
+  });
 
   function recompute() {
     var fleet = 0, cost = 0;

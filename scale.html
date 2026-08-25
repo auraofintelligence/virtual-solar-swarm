@@ -31,7 +31,7 @@
   <h2>Your allocation policy</h2>
   <p class="dim small">How the fleet is spent is a policy, not a law of the model. These are the same knobs the study's starting design chose one way; choose them your way. <button id="reset-policy" class="chip">Reset to the starting policy</button></p>
   <div class="grid cols-3">
-    <div class="card"><p><label>Solar observatory share <input type="range" id="p-obs" min="0" max="30" step="0.5" value="7.5"></label> <strong id="p-obs-out"></strong></p><p class="faint">Portion of the whole fleet wrapped around the Sun.</p></div>
+    <div class="card"><p><label>Solar observatory <input type="range" id="p-obs" min="0" max="1500" step="10" value="100"></label> <strong id="p-obs-out"></strong></p><p class="faint">Satellites wrapped around the Sun, counted at the starting fleet.</p></div>
     <div class="card"><p><label>Swarm strength <input type="range" id="p-swarm" min="4" max="200" value="50"></label> <strong id="p-swarm-out"></strong></p><p class="faint">Satellites at each of the seven priority worlds.</p></div>
     <div class="card"><p><label>Enhanced picket strength <input type="range" id="p-enh" min="2" max="60" value="12"></label> <strong id="p-enh-out"></strong></p><p class="faint">Satellites at each of the fifteen enhanced targets.</p></div>
     <div class="card"><p><label>Baseline picket strength <input type="range" id="p-picket" min="1" max="16" value="4"></label> <strong id="p-picket-out"></strong></p><p class="faint">Satellites per ordinary station; four gives all-angle coverage.</p></div>
@@ -39,13 +39,14 @@
     <div class="card">
       <p><label>Fill order
         <select id="p-order">
-          <option value="shipped" selected>as the study shipped</option>
+          <option value="windows" selected>soonest on station (the windows decide)</option>
           <option value="hazard">near-Earth rocks first</option>
           <option value="nearest">nearest first</option>
           <option value="largest">largest first</option>
+          <option value="shipped">as the study shipped: the original 200 first</option>
         </select></label></p>
       <p><label><input type="checkbox" id="p-grow" checked> stations grow with the fleet</label></p>
-      <p class="faint">Which bodies get pickets first as the budget moves, and whether station sizes scale or hold fixed.</p>
+      <p class="faint">By default the physics sets the queue: next launch window plus cruise, soonest first. The other orders are a priority vote, there to be re-taken whenever new technologies, new partners or black swans change the maths, the money or the science.</p>
     </div>
   </div>
 
@@ -57,6 +58,11 @@
     <div class="card"><div class="stat" id="s-data">·</div><div class="stat-label">observations home / day</div></div>
   </div>
   <p class="dim small" id="alloc-note"></p>
+
+  <h2>Who gets what</h2>
+  <p class="dim small">Click a tier to see exactly which bodies sit in it under your current settings; every name opens its dossier.</p>
+  <div class="chip-row" id="who-chips"></div>
+  <div class="card" id="who-panel" style="display:none"></div>
 
   <div class="grid cols-2">
     <div class="card">
@@ -107,7 +113,7 @@ VSS.mountChrome("scale.html");
 
   function readPolicy() {
     return {
-      obsSharePct: +document.getElementById("p-obs").value,
+      obsN: +document.getElementById("p-obs").value,
       swarmN: +document.getElementById("p-swarm").value,
       enhN: +document.getElementById("p-enh").value,
       picketN: +document.getElementById("p-picket").value,
@@ -117,7 +123,7 @@ VSS.mountChrome("scale.html");
     };
   }
   function writePolicy(p) {
-    document.getElementById("p-obs").value = p.obsSharePct;
+    document.getElementById("p-obs").value = p.obsN;
     document.getElementById("p-swarm").value = p.swarmN;
     document.getElementById("p-enh").value = p.enhN;
     document.getElementById("p-picket").value = p.picketN;
@@ -126,17 +132,60 @@ VSS.mountChrome("scale.html");
     document.getElementById("p-order").value = p.order;
   }
 
+  var lastAlloc = null, whoOpen = null;
+
+  function whoGroups(a) {
+    var objs = window.VSS_OBJECTS;
+    var fundedPickets = objs.filter(function (o) { return o.tier === "picket" && a.per[o.id]; });
+    var promoted = objs.filter(function (o) { return o.tier === "survey" && a.per[o.id]; });
+    var unfunded = objs.filter(function (o) { return o.tier === "picket" && !a.per[o.id]; });
+    return [
+      { key: "obs", label: "Solar observatory", n: a.per.sun ? 1 : 0, each: a.per.sun || 0, list: a.per.sun ? [window.VSS_BY_ID.sun] : [] },
+      { key: "swarm", label: "Priority swarms", each: a.tiers.swarm, list: objs.filter(function (o) { return o.tier === "swarm" && a.per[o.id]; }) },
+      { key: "enh", label: "Enhanced pickets", each: a.tiers.enhanced, list: objs.filter(function (o) { return o.tier === "enhanced" && a.per[o.id]; }) },
+      { key: "picket", label: "Baseline pickets", each: a.tiers.picket, list: fundedPickets },
+      { key: "promoted", label: "Promoted from the census", each: a.tiers.picket, list: promoted },
+      { key: "int", label: "Interceptors", each: a.tiers.intercept, list: objs.filter(function (o) { return o.tier === "intercept" && a.per[o.id]; }) },
+      { key: "unfunded", label: "Waiting for funding", each: 0, list: unfunded }
+    ];
+  }
+  function renderWho() {
+    if (!lastAlloc) return;
+    var groups = whoGroups(lastAlloc);
+    document.getElementById("who-chips").innerHTML = groups.map(function (g) {
+      return '<button class="chip" data-who="' + g.key + '" aria-pressed="' + (whoOpen === g.key) + '">' +
+        g.label + " · " + VSS.fmt(g.list.length) + "</button>";
+    }).join("");
+    document.querySelectorAll("#who-chips [data-who]").forEach(function (b) {
+      b.addEventListener("click", function () {
+        whoOpen = whoOpen === b.dataset.who ? null : b.dataset.who;
+        renderWho();
+      });
+    });
+    var panel = document.getElementById("who-panel");
+    var g = groups.filter(function (x) { return x.key === whoOpen; })[0];
+    if (!g || !g.list.length) { panel.style.display = "none"; return; }
+    panel.style.display = "";
+    panel.innerHTML = "<h3>" + g.label +
+      (g.key === "unfunded" ? ' <span class="dim small">· starting pickets not covered by these settings</span>'
+        : ' <span class="dim small">· ' + (g.key === "obs" ? VSS.fmt(g.each) + " satellites" : VSS.fmt(g.each) + " satellites each") + "</span>") + "</h3>" +
+      '<div class="chip-row">' + g.list.map(function (o) {
+        return '<a class="chip" style="text-decoration:none" href="object.html?id=' + o.id + '">' + o.name + "</a>";
+      }).join("") + "</div>";
+  }
+
   function render() {
     var F = sliderToF();
     var p = readPolicy();
     document.getElementById("F-out").textContent = VSS.fmt(F) + " satellites";
-    document.getElementById("p-obs-out").textContent = p.obsSharePct + "%";
+    document.getElementById("p-obs-out").textContent = VSS.fmt(p.obsN) + " satellites";
     document.getElementById("p-swarm-out").textContent = p.swarmN + " each";
     document.getElementById("p-enh-out").textContent = p.enhN + " each";
     document.getElementById("p-picket-out").textContent = p.picketN + " each";
     document.getElementById("p-int-out").textContent = String(p.interceptors);
 
     var a = S.allocate(F, p);
+    lastAlloc = a;
     var sys = S.systems(a);
 
     document.getElementById("s-funded").textContent = VSS.fmt(a.funded) + " / 384";
@@ -144,11 +193,13 @@ VSS.mountChrome("scale.html");
     document.getElementById("s-cost").textContent = "A$" + VSS.fmt(sys.costUsdB * VSS.AUD_PER_USD, 1) + "b";
     document.getElementById("s-data").textContent = VSS.fmt(sys.dataTBday, 0) + " TB";
 
-    var picketLine = a.unfundedPickets > 0
-      ? a.unfundedPickets + " of the starting picket targets go unfunded under these settings"
-      : a.promoted > 0
-        ? "all starting pickets funded, plus " + VSS.fmt(a.promoted) + " census bodies given watchers of their own"
-        : "exactly the starting line-up of funded targets";
+    var picketLine = a.unfundedPickets > 0 && a.promoted > 0
+      ? VSS.fmt(a.promoted) + " census bodies reach station sooner than " + VSS.fmt(a.unfundedPickets) + " of the starting pickets, and take their seats"
+      : a.unfundedPickets > 0
+        ? a.unfundedPickets + " of the starting picket targets wait for funding"
+        : a.promoted > 0
+          ? "all starting pickets funded, plus " + VSS.fmt(a.promoted) + " census bodies given watchers of their own"
+          : "exactly the starting line-up of funded targets";
     document.getElementById("alloc-note").textContent =
       "Under these settings: " + picketLine + ". " + (a.notes[0] || "") +
       " Steady state needs a launch roughly every " +
@@ -167,6 +218,8 @@ VSS.mountChrome("scale.html");
       "<dt>Bodies with watchers</dt><dd>" + VSS.fmt(a.funded) + " of 384 (" + VSS.fmt(a.funded / 384 * 100, 0) + " per cent of the catalogue)</dd>" +
       "<dt>Open observations</dt><dd>about " + VSS.fmt(sys.dataTBday, 0) + " terabytes a day, published for anyone</dd>" +
       "<dt>Visitor readiness</dt><dd>" + VSS.fmt(sys.interceptorsReady) + " interceptors fuelled for the next interstellar arrival</dd>";
+
+    renderWho();
   }
 
   slider.value = fToSlider(1332);
@@ -177,7 +230,7 @@ VSS.mountChrome("scale.html");
   document.getElementById("p-order").addEventListener("change", render);
   document.getElementById("p-grow").addEventListener("change", render);
   document.getElementById("reset-policy").addEventListener("click", function () {
-    writePolicy(S.DEFAULT_POLICY); render();
+    writePolicy(S.STARTING_POLICY); render();
   });
   document.querySelectorAll(".chip[data-f]").forEach(function (b) {
     b.addEventListener("click", function () { slider.value = fToSlider(+b.dataset.f); render(); });

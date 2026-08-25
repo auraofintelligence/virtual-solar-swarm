@@ -6,35 +6,70 @@
 (function () {
   "use strict";
 
-  var DEFAULT_POLICY = {
-    obsSharePct: 7.5,   // share of the fleet held by the solar observatory
-    swarmN: 50,         // satellites per priority-swarm world, at the starting fleet
+  /* The policy the study started with; the reset button restores this. */
+  var STARTING_POLICY = {
+    obsN: 100,          // satellites at the solar observatory, at the starting fleet
+    swarmN: 50,         // per priority-swarm world, at the starting fleet
     enhN: 12,           // per enhanced-picket target
     picketN: 4,         // per baseline picket
     interceptors: 6,    // held ready across the visitor classes
     scaleStations: true, // grow station sizes with the fleet, or hold them fixed
-    order: "shipped"    // which bodies get pickets first as the budget moves
+    order: "shipped"    // the original 200 first, in the order the study began
   };
+  /* What the page loads with: same numbers, but the fill order defers to
+     physics: whoever could soonest be on station gets crewed first. */
+  var DEFAULT_POLICY = Object.assign({}, STARTING_POLICY, { order: "windows" });
 
-  /* Transparent fill orders; no hidden scoring. */
+  /* Days until a satellite could be on station: next launch window plus the
+     cruise (capped at the site's 25-year fast-path convention), or the next
+     perihelion for the stretched divers. Cached per body. */
+  var arrivalCache = null;
+  function arrivalDays(o) {
+    var A = window.ASTRO;
+    var earth = window.VSS_BY_ID.earth.orbit;
+    var now = new Date();
+    var ho = VSS.helioOrbitOf(o);
+    if (!ho || o.cls === "hypothesis") return Infinity; // no flight plan to an unfound world
+    if (ho.hyperbolic) return 30;                        // interceptors go when the visitor does
+    if (ho.e > 0.85) {
+      var peri = A.nextPerihelia(ho, now, 1)[0];
+      return peri ? (peri - now) / 86400000 : Infinity;
+    }
+    if (Math.abs(ho.aAU - 1) < 0.02) return 90;          // co-orbital neighbours: on demand
+    var t = A.fastTransfer(1, ho.aAU, 0);
+    var wins = A.windowsForTransfer(earth, ho, now, 1, t);
+    if (!wins.length) return Infinity;
+    return (wins[0] - now) / 86400000 + Math.min(t.tofYears, 25) * 365.25;
+  }
+  function arrivalOf(o) {
+    if (!arrivalCache) {
+      arrivalCache = {};
+      window.VSS_OBJECTS.forEach(function (b) { arrivalCache[b.id] = arrivalDays(b); });
+    }
+    return arrivalCache[o.id];
+  }
+
+  /* Transparent fill orders; no hidden scoring. "shipped" keeps the original
+     200 ahead of the census; every other order treats all bodies as one queue. */
   function orderedQueue(order) {
     var objs = window.VSS_OBJECTS;
     var pickets = objs.filter(function (o) { return o.tier === "picket"; });
     var census = objs.filter(function (o) { return o.tier === "survey"; });
+    var merged = pickets.concat(census);
     function byRadius(a, b) { return b.radiusKm - a.radiusKm; }
     function byNear(a, b) {
       var ha = VSS.helioOrbitOf(a), hb = VSS.helioOrbitOf(b);
       return (ha.aAU || ha.qAU || 999) - (hb.aAU || hb.qAU || 999);
     }
-    if (order === "largest") return pickets.slice().sort(byRadius).concat(census.slice().sort(byRadius));
-    if (order === "nearest") return pickets.slice().sort(byNear).concat(census.slice().sort(byNear));
+    function byArrival(a, b) { return arrivalOf(a) - arrivalOf(b); }
+    if (order === "windows") return merged.slice().sort(byArrival);
+    if (order === "largest") return merged.slice().sort(byRadius);
+    if (order === "nearest") return merged.slice().sort(byNear);
     if (order === "hazard") {
       var isNea = function (o) { return o.group === "Near-Earth"; };
-      var first = pickets.filter(isNea).concat(census.filter(isNea));
-      var rest = pickets.filter(function (o) { return !isNea(o); }).concat(census.filter(function (o) { return !isNea(o); }));
-      return first.concat(rest);
+      return merged.filter(isNea).sort(byArrival).concat(merged.filter(function (o) { return !isNea(o); }).sort(byArrival));
     }
-    return pickets.concat(census); // shipped: the order the study started with
+    return merged; // shipped
   }
 
   function allocate(F, policy) {
@@ -42,7 +77,7 @@
     var out = { F: F, per: {}, funded: 0, fleet: 0, notes: [] };
     var grow = p.scaleStations ? F / 1332 : 1;
 
-    var obsN = Math.max(1, Math.round(F * p.obsSharePct / 100));
+    var obsN = Math.max(1, Math.round(p.obsN * grow));
     var swarmN = Math.max(1, Math.round(p.swarmN * grow));
     var enhN = Math.max(1, Math.round(p.enhN * grow));
     var picketN = Math.max(1, Math.round(p.picketN * grow));
@@ -76,9 +111,8 @@
 
     out.funded = Object.keys(out.per).length;
     out.tiers = { observatory: Math.min(obsN, F), swarm: swarmN, enhanced: enhN, picket: picketN, intercept: perInt };
-    var picketTargets = window.VSS_OBJECTS.filter(function (o) { return o.tier === "picket"; }).length;
-    out.promoted = Math.max(0, i - picketTargets);
-    out.unfundedPickets = Math.max(0, picketTargets - Math.min(i, picketTargets));
+    out.promoted = window.VSS_OBJECTS.filter(function (o) { return o.tier === "survey" && out.per[o.id]; }).length;
+    out.unfundedPickets = window.VSS_OBJECTS.filter(function (o) { return o.tier === "picket" && !out.per[o.id]; }).length;
     return out;
   }
 
@@ -115,5 +149,5 @@
     };
   }
 
-  window.VSS_SCALE = { DEFAULT_POLICY: DEFAULT_POLICY, allocate: allocate, systems: systems };
+  window.VSS_SCALE = { DEFAULT_POLICY: DEFAULT_POLICY, STARTING_POLICY: STARTING_POLICY, allocate: allocate, systems: systems, orderedQueue: orderedQueue, arrivalOf: arrivalOf };
 })();
