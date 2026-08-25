@@ -27,11 +27,17 @@
   function lighten(t, f) { return [Math.min(255, t[0] + f), Math.min(255, t[1] + f), Math.min(255, t[2] + f)]; }
   function darken(t, f) { return [Math.max(0, t[0] - f), Math.max(0, t[1] - f), Math.max(0, t[2] - f)]; }
 
-  /* Real ring systems, drawn as geometry at their true tilt. */
+  /* Real ring systems: measured band edges in planet radii, drawn as geometry
+     at the ring plane's true tilt. Nothing here is invented structure. */
   var RINGS = {
-    saturn: { tilt: 26.7 * Math.PI / 180, inner: 1.24, outer: 2.27, alpha: 0.75 },
-    uranus: { tilt: 82 * Math.PI / 180, inner: 1.64, outer: 2.0, alpha: 0.45 },
-    jupiter: null, neptune: null
+    saturn: {
+      tilt: 26.7 * Math.PI / 180, outer: 2.27,
+      bands: [[1.24, 1.53, 0.22], [1.53, 1.95, 0.62], [1.95, 2.03, 0.06], [2.03, 2.27, 0.4]]
+    },
+    uranus: {
+      tilt: 82 * Math.PI / 180, outer: 2.0,
+      bands: [[1.64, 1.75, 0.12], [1.94, 2.0, 0.4]]
+    }
   };
 
   /* ---- map cache: load once, repaint any canvas that asked early ---- */
@@ -112,15 +118,20 @@
   }
 
   function ringHalf(ctx, cx, cy, R, ring, back) {
+    var squash = Math.sin(ring.tilt);   // how open the ring plane looks from here
     ctx.save();
-    ctx.translate(cx, cy); ctx.rotate(0.34);
-    ctx.strokeStyle = "rgba(226,208,176," + ring.alpha + ")";
-    var mid = (ring.inner + ring.outer) / 2;
-    ctx.lineWidth = Math.max(1, R * (ring.outer - ring.inner));
-    ctx.beginPath();
-    ctx.ellipse(0, 0, R * mid, R * mid * Math.abs(Math.cos(ring.tilt)) + R * 0.02,
-      0, back ? Math.PI : 0, back ? 2 * Math.PI : Math.PI);
-    ctx.stroke();
+    ctx.translate(cx, cy); ctx.rotate(-0.18);
+    ring.bands.forEach(function (b) {
+      var steps = Math.max(2, Math.round((b[1] - b[0]) * R / 1.2));
+      for (var k = 0; k <= steps; k++) {
+        var rad = R * (b[0] + (b[1] - b[0]) * k / steps);
+        ctx.strokeStyle = "rgba(228,212,182," + b[2] + ")";
+        ctx.lineWidth = 1.1;
+        ctx.beginPath();
+        ctx.ellipse(0, 0, rad, rad * squash, 0, back ? Math.PI : 0, back ? 2 * Math.PI : Math.PI);
+        ctx.stroke();
+      }
+    });
     ctx.restore();
   }
 
@@ -159,24 +170,40 @@
     if (ring) ringHalf(ctx, cx, cy, R, ring, false);
   }
 
-  /* Lazy-paint every canvas[data-obj] as it scrolls into view. */
-  function autoPaint(root) {
+  /* Paint every canvas[data-obj] that is near the viewport, and keep painting
+     as the reader scrolls. Deliberately not relying on IntersectionObserver:
+     this runs the same everywhere, including inside embedded viewers. */
+  var pending = [];
+  var sweepQueued = false;
+  function sweep() {
+    sweepQueued = false;
     var byId = window.VSS_BY_ID || {};
-    var els = (root || document).querySelectorAll("canvas[data-obj]");
-    if (!("IntersectionObserver" in window)) {
-      els.forEach(function (c) { var o = byId[c.dataset.obj]; if (o) paint(c, o); });
-      return;
-    }
-    var io = new IntersectionObserver(function (entries) {
-      entries.forEach(function (en) {
-        if (!en.isIntersecting) return;
-        var c = en.target, o = byId[c.dataset.obj];
-        if (o && !c.dataset.painted) { paint(c, o); c.dataset.painted = "1"; }
-        io.unobserve(c);
-      });
-    }, { rootMargin: "200px" });
-    els.forEach(function (c) { io.observe(c); });
+    var h = window.innerHeight || 800;
+    var still = [];
+    pending.forEach(function (c) {
+      if (c.dataset.painted) return;
+      if (!c.isConnected) return;
+      var r = c.getBoundingClientRect();
+      if (r.bottom > -300 && r.top < h + 300) {
+        var o = byId[c.dataset.obj];
+        if (o) { paint(c, o); c.dataset.painted = "1"; return; }
+      }
+      still.push(c);
+    });
+    pending = still;
   }
+  function queueSweep() {
+    if (sweepQueued) return;
+    sweepQueued = true;
+    requestAnimationFrame(sweep);
+  }
+  function autoPaint(root) {
+    var els = (root || document).querySelectorAll("canvas[data-obj]");
+    els.forEach(function (c) { if (!c.dataset.painted) pending.push(c); });
+    sweep();
+  }
+  window.addEventListener("scroll", queueSweep, { passive: true });
+  window.addEventListener("resize", queueSweep, { passive: true });
 
   window.VSS_ART = { paint: paint, autoPaint: autoPaint, tintOf: tintOf, hasMap: function (id) { return !!(window.VSS_MAPS || {})[id]; } };
 })();
