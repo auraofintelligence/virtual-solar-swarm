@@ -127,7 +127,8 @@ VSS.mountChrome("orbit-lab.html");
     sel.appendChild(og);
   });
 
-  var cur, bands, gm, vinf, rot, rSync, j2, bodyYear, parent, tint, obliq, magTilt, noField, sunAz;
+  var cur, bands, gm, vinf, rot, rSync, j2, bodyYear, parent, tint, obliq, magTilt, noField, sunAz, swVec;
+  var texData = null, texW = 0, texH = 0, sph = null;
   var advanced = false, scaleMode = "log";
   var slider = document.getElementById("r"), incS = document.getElementById("inc");
   var eccS = document.getElementById("ecc"), argpS = document.getElementById("argp"), raanS = document.getElementById("raan");
@@ -218,6 +219,11 @@ VSS.mountChrome("orbit-lab.html");
     var pos = A.helioPos(ho, A.daysSinceJ2000(new Date()));
     sunAz = Math.atan2(-pos.y, -pos.x);
     trail = []; M = 0; lambda = 0;
+    // this body's surface skin, generated once, and the sunlight direction
+    var texCvs = window.VSS_ART.texture(cur);
+    texW = texCvs.width; texH = texCvs.height;
+    texData = texCvs.getContext("2d").getImageData(0, 0, texW, texH).data;
+    sph = null;
 
     document.getElementById("b-hill").textContent = VSS.fmtKm(bands.hillKm);
     document.getElementById("b-min").textContent = VSS.fmtKm(bands.minKm) + " from centre";
@@ -375,6 +381,7 @@ VSS.mountChrome("orbit-lab.html");
     var ce = Math.cos(eps), se = Math.sin(eps);
     ringPath(maxVis * 0.98, function (a) { return [Math.cos(a), Math.sin(a) * ce, Math.sin(a) * se]; }, "rgba(140,155,184,.3)", 1, [2, 6]);
     var sw = [Math.cos(sunAz), Math.sin(sunAz) * ce, Math.sin(sunAz) * se];
+    swVec = sw;
     var spA = p3(cur.radiusKm * 1.1, sw[0], sw[1], sw[2]);
     var spB = p3(maxVis * 0.95, sw[0], sw[1], sw[2]);
     ctx.strokeStyle = "#ffd76a"; ctx.lineWidth = 1.6;
@@ -418,24 +425,75 @@ VSS.mountChrome("orbit-lab.html");
       ctx.fillText("magnetic", mN.x + 5, mN.y + 10);
     }
 
-    // the body, in its own colours
+    // ---- the body: its skin, texture-mapped in 3D, lit by the real sunward direction ----
     var Rpx = Math.max(px(cur.radiusKm), 3);
-    var g = ctx.createRadialGradient(CX - Rpx * 0.4, CY - Rpx * 0.4, Rpx * 0.1, CX, CY, Rpx);
-    g.addColorStop(0, shade(70)); g.addColorStop(0.6, shade(0)); g.addColorStop(1, shade(-80));
-    ctx.fillStyle = g;
-    ctx.beginPath(); ctx.arc(CX, CY, Rpx, 0, 7); ctx.fill();
-    if (["jupiter", "saturn", "uranus", "neptune"].indexOf(cur.id) >= 0) {
-      ctx.save(); ctx.beginPath(); ctx.arc(CX, CY, Rpx, 0, 7); ctx.clip();
-      for (var b2 = -2; b2 <= 2; b2++) {
-        ctx.fillStyle = shade(b2 % 2 ? 24 : -18, 0.5);
-        ctx.fillRect(CX - Rpx, CY + b2 * Rpx * 0.32 - Rpx * 0.09, 2 * Rpx, Rpx * 0.18);
+    if (Rpx < 8 || !texData) {
+      var g = ctx.createRadialGradient(CX - Rpx * 0.4, CY - Rpx * 0.4, Rpx * 0.1, CX, CY, Rpx);
+      g.addColorStop(0, shade(70)); g.addColorStop(0.6, shade(0)); g.addColorStop(1, shade(-80));
+      ctx.fillStyle = g;
+      ctx.beginPath(); ctx.arc(CX, CY, Rpx, 0, 7); ctx.fill();
+    } else {
+      var key = Rpx.toFixed(1) + "|" + yaw.toFixed(3) + "|" + camTilt.toFixed(3);
+      if (!sph || sph.key !== key) {
+        var Rr = Math.ceil(Rpx), size = 2 * Rr + 2;
+        var cyw = Math.cos(yaw), syw = Math.sin(yaw), ct = Math.cos(camTilt), st = Math.sin(camTilt);
+        var U = [cyw, -syw, 0], V = [syw * ct, cyw * ct, st], WV = [-syw * st, -cyw * st, ct];
+        var idx = [], lonN = [], rowB = [], lum = [];
+        for (var py2 = 0; py2 < size; py2++) {
+          for (var px2 = 0; px2 < size; px2++) {
+            var aa = (px2 - Rr) / Rpx, bb = -(py2 - Rr) / Rpx;
+            var rr2 = aa * aa + bb * bb;
+            if (rr2 > 1) continue;
+            var cc = Math.sqrt(1 - rr2);
+            var Px = aa * U[0] + bb * V[0] + cc * WV[0];
+            var Py = aa * U[1] + bb * V[1] + cc * WV[1];
+            var Pz = aa * U[2] + bb * V[2] + cc * WV[2];
+            var lat2 = Math.asin(Math.max(-1, Math.min(1, Pz)));
+            var lon2 = Math.atan2(Py, Px);
+            idx.push(py2 * size + px2);
+            lonN.push(lon2 / (2 * Math.PI));
+            rowB.push(Math.max(0, Math.min(texH - 1, Math.round((0.5 - lat2 / Math.PI) * (texH - 1)))) * texW);
+            var dl = Px * swVec[0] + Py * swVec[1] + Pz * swVec[2];
+            lum.push(0.22 + 0.85 * Math.max(0, dl));
+          }
+        }
+        var tmp = document.createElement("canvas");
+        tmp.width = size; tmp.height = size;
+        sph = { key: key, Rr: Rr, size: size, idx: idx, lonN: lonN, rowB: rowB, lum: lum, tmp: tmp, tctx: tmp.getContext("2d"), img: null };
+        sph.img = sph.tctx.createImageData(size, size);
       }
-      ctx.restore();
+      var spin = lambda / (2 * Math.PI);
+      var dImg = sph.img.data;
+      for (var q2 = 0; q2 < sph.idx.length; q2++) {
+        var tfrac = sph.lonN[q2] - spin;
+        tfrac -= Math.floor(tfrac);
+        var si = (sph.rowB[q2] + ((tfrac * texW) | 0)) * 4;
+        var o4 = sph.idx[q2] * 4;
+        var L2 = sph.lum[q2];
+        dImg[o4] = Math.min(255, texData[si] * L2);
+        dImg[o4 + 1] = Math.min(255, texData[si + 1] * L2);
+        dImg[o4 + 2] = Math.min(255, texData[si + 2] * L2);
+        dImg[o4 + 3] = 255;
+      }
+      sph.tctx.putImageData(sph.img, 0, 0);
+      ctx.drawImage(sph.tmp, Math.round(CX - sph.Rr), Math.round(CY - sph.Rr));
     }
-    ringPath(cur.radiusKm, function (a) { return [Math.cos(a), Math.sin(a), 0]; }, shade(60, 0.5), 1);
-    // rotating meridian and surface marker: watch the day turn
+    // graticule: latitude rings, and meridians turning with the day
+    if (Rpx >= 14) {
+      [0, 30, -30, 60, -60].forEach(function (latDeg) {
+        var phi = latDeg * D2R, cp = Math.cos(phi), sp3 = Math.sin(phi);
+        ringPath(cur.radiusKm * 1.002, function (a) { return [Math.cos(a) * cp, Math.sin(a) * cp, sp3]; },
+          latDeg === 0 ? "rgba(220,229,245,.4)" : "rgba(220,229,245,.18)", 1);
+      });
+      for (var mm = 0; mm < 6; mm++) {
+        var lonM = lambda + mm * 30 * D2R;
+        var cl2 = Math.cos(lonM), sl2 = Math.sin(lonM);
+        ringPath(cur.radiusKm * 1.002, function (a) { return [Math.cos(a) * cl2, Math.cos(a) * sl2, Math.sin(a)]; },
+          mm === 0 ? "rgba(240,180,41,.55)" : "rgba(220,229,245,.14)", mm === 0 ? 1.3 : 1);
+      }
+    }
+    // surface marker on the equator's prime meridian: watch a single town's day
     if (rot && rot.seconds && !rot.chaotic) {
-      ringPath(cur.radiusKm * 1.001, function (a) { return [Math.cos(a) * Math.cos(lambda), Math.cos(a) * Math.sin(lambda), Math.sin(a)]; }, shade(40, 0.35), 1);
       var mk = p3(cur.radiusKm * 1.03, Math.cos(lambda), Math.sin(lambda), 0);
       ctx.fillStyle = "#f0b429";
       ctx.beginPath(); ctx.arc(mk.x, mk.y, 3, 0, 7); ctx.fill();
@@ -568,7 +626,7 @@ VSS.mountChrome("orbit-lab.html");
       : "That one cannot be orbited; see its <a href='object.html?id=" + want + "'>dossier</a>. The lab is loaded with a comet instead.";
     want = want === "sun" ? "mercury" : "67p";
   }
-  setTarget(want && window.VSS_BY_ID[want] ? want : "enceladus");
+  setTarget(want && window.VSS_BY_ID[want] ? want : "earth");
   requestAnimationFrame(tick);
 })();
 </script>
