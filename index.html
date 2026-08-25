@@ -14,8 +14,8 @@
   <h1>Design the swarm that would watch the whole solar system</h1>
   <p class="lede">This studio models a single idea: a standing crew of satellites around every interesting body in the solar system, keeping watch. It starts counting at 200 targets and 1,300 spacecraft, but no rule says those numbers: on <a href="scale.html">the scale page</a> the fleet total and the policy for spending it are dials in your hands, with the downstream numbers computed for you to weigh. Every page is a working model you can pull on.</p>
 
-  <div class="hero-band"><canvas id="band" width="1160" height="150"></canvas></div>
-  <p class="faint" style="margin-top:.2rem">The family, drawn by code from each body's real properties. Click any face on the <a href="targets.html">catalogue</a> for its dossier.</p>
+  <div class="family-row" id="band"></div>
+  <p class="faint" style="margin-top:.2rem">The Sun, the eight planets and our Moon, each wearing humanity's real map of it: NASA Blue Marble, Lunar Reconnaissance Orbiter, MESSENGER, Viking, Cassini and Voyager data. Bodies we have not mapped are drawn plain, in their measured colour, on the <a href="targets.html">catalogue</a>.</p>
 
   <div class="callout warm">
     This is a design study, not a mission. Nothing on this site has been built or launched. The maths is teaching-grade mechanics: right enough to compare options and plan shapes, not to fly a spacecraft. The <a href="about.html">about page</a> lists every approximation.
@@ -69,6 +69,7 @@
 <script src="data/sensors.js"></script>
 <script src="data/buses.js"></script>
 <script src="assets/core.js"></script>
+<script src="data/maps.js"></script>
 <script src="assets/art.js"></script>
 <script>
 VSS.mountChrome("index.html");
@@ -85,17 +86,17 @@ VSS.mountChrome("index.html");
   document.getElementById("stat-fleet").textContent = VSS.fmt(fleet);
   document.getElementById("stat-moons").textContent = VSS.fmt(moons);
 
-  // the family portrait band
-  var band = document.getElementById("band"), bctx = band.getContext("2d");
-  var lineup = ["sun", "mercury", "venus", "earth", "mars", "jupiter", "saturn", "uranus", "neptune", "pluto", "halley"];
-  var cell = band.width / lineup.length;
-  lineup.forEach(function (id, i) {
+  // the family: real maps, each face linking to its dossier
+  var lineup = ["sun", "mercury", "venus", "earth", "moon", "mars", "jupiter", "saturn", "uranus", "neptune"];
+  document.getElementById("band").innerHTML = lineup.map(function (id) {
     var o = window.VSS_BY_ID[id];
-    if (!o) return;
-    var off = document.createElement("canvas");
-    off.width = 150; off.height = 150;
-    window.VSS_ART.paint(off, o);
-    bctx.drawImage(off, i * cell + (cell - 130) / 2, 10, 130, 130);
+    if (!o) return "";
+    return '<a class="family-face" href="object.html?id=' + id + '" title="' + o.name + '">' +
+      '<canvas width="150" height="150" data-obj="' + id + '"></canvas>' +
+      '<span class="faint">' + o.name + "</span></a>";
+  }).join("");
+  document.querySelectorAll("#band canvas[data-obj]").forEach(function (c) {
+    window.VSS_ART.paint(c, window.VSS_BY_ID[c.dataset.obj]);
   });
 })();
 </script>

@@ -28,6 +28,7 @@
 <script src="data/sensors.js"></script>
 <script src="data/buses.js"></script>
 <script src="assets/core.js"></script>
+<script src="data/maps.js"></script>
 <script src="assets/art.js"></script>
 <script>
 VSS.mountChrome("targets.html");
@@ -68,8 +69,12 @@ VSS.mountChrome("targets.html");
 
   var html = "";
   html += '<p class="faint"><a href="targets.html">← the catalogue</a></p>';
+  var mapped = window.VSS_MAPS && window.VSS_MAPS[o.id];
   html += '<div class="portrait-hero"><canvas id="portrait" width="300" height="300"></canvas>' +
-    '<div class="faint">portrait drawn by code from its real properties</div></div>';
+    '<div class="faint">' + (mapped
+      ? "wearing its real map · " + mapped.credit
+      : "no map of it aboard this site; drawn plain in its measured colour rather than an invented surface") +
+    "</div></div>";
   html += "<h1>" + o.name + "</h1>";
   html += '<p><span class="badge t-' + o.tier + '">' + VSS.TIERS[o.tier].label +
     (o.tier === "survey" ? "" : " · " + sats + " satellites") + "</span> &nbsp; " +

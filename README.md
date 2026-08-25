@@ -2,7 +2,7 @@
 
 🤝🔷 **A Luke × Claude build.** Created by Luke Nathan Hayes ([auraofintelligence](https://github.com/auraofintelligence)) and Claude (Fable 5) on 25 August 2026. Not a Codex build.
 
-An interactive, fully static website for designing a solar-system-wide satellite swarm: 384 catalogued bodies (the 200 funded targets plus a census of every named moon of the giant planets), real orbits, stable orbits, launch windows with an interactive delta-v dial, a live Lagrange-point gravity lab, modular sensor packages, propulsion, satellite builds, ride-share convoys with renewal planning, a data-relay and control-systems network model, fleet allocation and replacement cadence. Every body wears a portrait drawn by code from its real properties; nothing on the site is a photograph.
+An interactive, fully static website for designing a solar-system-wide satellite swarm: 384 catalogued bodies (the 200 funded targets plus a census of every named moon of the giant planets), real orbits, stable orbits, launch windows with an interactive delta-v dial, a live Lagrange-point gravity lab, modular sensor packages, propulsion, satellite builds, ride-share convoys with renewal planning, a data-relay and control-systems network model, fleet allocation and replacement cadence. Every globe wears humanity's real map of that body where one is bundled (the Sun, all eight planets and the Moon, from NASA/USGS and CC BY 4.0 mission-data assemblies, credited on the about page); bodies without a map are drawn plain in their measured colour rather than an invented surface.
 
 **Live site:** https://auraofintelligence.github.io/virtual-solar-swarm/
 

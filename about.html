@@ -32,13 +32,17 @@
     <li><strong>Engines.</strong> Specific impulse and cost figures for the cruise engines are round representative numbers; the Neumann Drive's mileage is its laboratory promise, marked as such wherever it appears. Thorium reactors appear only as the honest note that none has flown.</li>
     <li><strong>The census.</strong> Beyond the 200 funded targets the catalogue carries survey entries: the named moons of the giant planets and a deeper sweep of small worlds, with no dedicated satellites. It aims at every moon with a name; the unnamed provisional specks, and any names the sweep missed, wait for the next pass. Planet Nine appears clearly flagged as a hypothesis, because a design study can honestly plan for a question.</li>
     <li><strong>Convoys and the network.</strong> Convoy loads, renewal-per-window figures, light lags and trunk capacities are computed from this site's own transfer and position models, with clusters served as touring runs; real mission design would split and merge convoys far more cleverly.</li>
-    <li><strong>The portraits.</strong> The small catalogue portraits are stylised icons drawn by code from each body's real class, size and known character; they are identification marks, not maps, and none pretends to be a photograph.</li>
-    <li><strong>The globes.</strong> The orbit lab's rotating globes wear humanity's real maps where one exists: NASA's Blue Marble for Earth, the Lunar Reconnaissance Orbiter mosaic for the Moon, and mission-data maps for Mercury, Mars, Jupiter and Saturn (credits shown on each body's card; the Solar System Scope assemblies are CC BY 4.0). Where no full global map exists, the globe stays honestly plain, because inventing terrain for a real body would be a lie in pixels, and the missing maps are part of the case for the swarm.</li>
+    <li><strong>The imagery.</strong> Every globe on this site, from the home-page family to the catalogue thumbnails to the orbit lab, wears humanity's real map of that body where one is aboard: the Sun, all eight planets and our Moon. Bodies without a map here are drawn as plain discs in their measured colour. Nothing on this site is an invented surface, and nothing is a photograph of a place we have not been. The missing maps are part of the case for the swarm.</li>
     <li><strong>The numbers are dials.</strong> Nothing fixes 200 targets or 1,300 satellites; they are the setting where this study started counting. <a href="scale.html">The scale page</a> puts the fleet total and the allocation policy in the reader's hands, with proportional laws pinned to the starting point, and shows the downstream numbers (production, cost, coverage, traffic, data) for the reader to weigh themselves.</li>
   </ul>
 
   <h2>The concepts this leans on</h2>
   <p class="dim">The study assumes only technologies with flying ancestors: multi-satellite formation flying (NASA's <a href="https://www.nasa.gov/mission/magnetospheric-multiscale-mms/">MMS</a> and the <a href="https://www.nasa.gov/centers-and-facilities/nasas-starling-mission-sending-swarm-of-satellites-into-orbit/">Starling</a> swarm), swarm self-navigation by camera (Stanford's StarFOX experiment), deep-space laser communication (NASA's <a href="https://www.nasa.gov/mission/deep-space-optical-communications-dsoc/">DSOC</a>), quantum key distribution from orbit (the Micius satellite), solar observation from multiple vantage points (<a href="https://en.wikipedia.org/wiki/Solar_Orbiter">Solar Orbiter</a> and the HelioSwarm concept), and satellite mass production as proven by Starlink. What has no ancestor yet is the scale, and scale is exactly what the models on this site interrogate.</p>
+
+  <h2>Imagery credits</h2>
+  <p class="dim">The maps bundled with this site, each shown on its body's dossier and in the orbit lab:</p>
+  <ul id="credits" class="dim small" style="display:grid; gap:.3rem; padding-left:1.2rem"></ul>
+  <p class="faint">Assemblies marked CC BY 4.0 are by <a href="https://www.solarsystemscope.com/textures/">Solar System Scope</a>, built from NASA mission and elevation data, used under the <a href="https://creativecommons.org/licenses/by/4.0/">Creative Commons Attribution 4.0</a> licence. NASA and USGS imagery is public domain. This site's own code and text are under its own licence, below.</p>
 
   <h2>Signature</h2>
   <p>🤝🔷 A Luke × Claude build. Created by Luke Nathan Hayes (<a href="https://github.com/auraofintelligence">auraofintelligence</a>) and Claude (Fable 5), August 2026. Not a Codex build. Part of the wider Aura of Intelligence and Strange But True family of public design studies.</p>
@@ -63,6 +67,13 @@
 <script src="data/sensors.js"></script>
 <script src="data/buses.js"></script>
 <script src="assets/core.js"></script>
-<script>VSS.mountChrome("about.html");</script>
+<script src="data/maps.js"></script>
+<script>
+VSS.mountChrome("about.html");
+document.getElementById("credits").innerHTML = Object.keys(window.VSS_MAPS).map(function (id) {
+  var o = window.VSS_BY_ID[id];
+  return "<li><strong>" + (o ? o.name : id) + ":</strong> " + window.VSS_MAPS[id].credit + "</li>";
+}).join("");
+</script>
 </body>
 </html>

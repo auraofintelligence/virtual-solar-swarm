@@ -1,24 +1,13 @@
-/* Procedural portraits: every body drawn by code from its real properties.
-   No photographs, no borrowed art; the same seed always paints the same face. */
+/* Body portraits.
+   Bodies humanity has mapped are drawn as globes wearing their real map
+   (see data/maps.js for sources and credits). Everything else is drawn as a
+   plain disc in its real measured colour: no invented terrain, no invented
+   bands, no invented tails. The plainness is the honest signal that we do
+   not have a map of that world yet. */
 (function () {
   "use strict";
 
-  function hash(str) {
-    var h = 2166136261;
-    for (var i = 0; i < str.length; i++) { h ^= str.charCodeAt(i); h = Math.imul(h, 16777619); }
-    return h >>> 0;
-  }
-  function rng(seed) {
-    var a = seed;
-    return function () {
-      a |= 0; a = (a + 0x6D2B79F5) | 0;
-      var t = Math.imul(a ^ (a >>> 15), 1 | a);
-      t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
-      return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
-    };
-  }
-
-  /* Hand-set tints for famous faces; class fallbacks for the rest. */
+  /* Measured colours. These come from real observation, not invention. */
   var TINT = {
     sun: [255, 186, 64], mercury: [154, 144, 134], venus: [232, 202, 148], earth: [88, 140, 214],
     mars: [198, 108, 66], jupiter: [214, 176, 138], saturn: [222, 198, 152], uranus: [156, 204, 218],
@@ -38,291 +27,139 @@
   function lighten(t, f) { return [Math.min(255, t[0] + f), Math.min(255, t[1] + f), Math.min(255, t[2] + f)]; }
   function darken(t, f) { return [Math.max(0, t[0] - f), Math.max(0, t[1] - f), Math.max(0, t[2] - f)]; }
 
-  function sphere(ctx, x, y, r, t) {
-    var g = ctx.createRadialGradient(x - r * 0.45, y - r * 0.45, r * 0.1, x, y, r);
-    g.addColorStop(0, css(lighten(t, 70)));
-    g.addColorStop(0.55, css(t));
-    g.addColorStop(1, css(darken(t, 90)));
+  /* Real ring systems, drawn as geometry at their true tilt. */
+  var RINGS = {
+    saturn: { tilt: 26.7 * Math.PI / 180, inner: 1.24, outer: 2.27, alpha: 0.75 },
+    uranus: { tilt: 82 * Math.PI / 180, inner: 1.64, outer: 2.0, alpha: 0.45 },
+    jupiter: null, neptune: null
+  };
+
+  /* ---- map cache: load once, repaint any canvas that asked early ---- */
+  var mapCache = {};   // id -> {state, data, w, h, waiting:[]}
+  function getMap(id, onReady) {
+    var maps = window.VSS_MAPS || {};
+    if (!maps[id]) return null;
+    var entry = mapCache[id];
+    if (entry && entry.state === "ready") return entry;
+    if (!entry) {
+      entry = mapCache[id] = { state: "loading", waiting: [] };
+      var im = new Image();
+      im.onload = function () {
+        var w = 512, h = 256;
+        var c = document.createElement("canvas");
+        c.width = w; c.height = h;
+        var cx = c.getContext("2d");
+        cx.drawImage(im, 0, 0, w, h);
+        entry.data = cx.getImageData(0, 0, w, h).data;
+        entry.w = w; entry.h = h; entry.state = "ready";
+        entry.waiting.splice(0).forEach(function (fn) { fn(); });
+      };
+      im.onerror = function () { entry.state = "failed"; entry.waiting.splice(0).forEach(function (fn) { fn(); }); };
+      im.src = maps[id].file;
+    }
+    if (entry.state === "loading" && onReady) entry.waiting.push(onReady);
+    return null;
+  }
+
+  /* Longitude offsets so a body's best-known face points at the viewer.
+     Earth shows the Australian side, because that is where this was built. */
+  var LON_OFFSET = { earth: 0.369, mars: 0.13, jupiter: 0.0, moon: 0.0 };
+
+  function drawMappedGlobe(ctx, o, cx, cy, R, map) {
+    var size = Math.ceil(R * 2) + 2, half = size / 2;
+    var tmp = document.createElement("canvas");
+    tmp.width = size; tmp.height = size;
+    var tctx = tmp.getContext("2d");
+    var img = tctx.createImageData(size, size);
+    var d = img.data, td = map.data, tw = map.w, th = map.h;
+    var isSun = o.cls === "star";
+    // light from the upper left, a little toward the viewer
+    var Lx = -0.52, Ly = 0.42, Lz = 0.74;
+    var off = LON_OFFSET[o.id] || 0;
+    for (var y = 0; y < size; y++) {
+      var b = -(y - half) / R;
+      for (var x = 0; x < size; x++) {
+        var a = (x - half) / R;
+        var rr = a * a + b * b;
+        if (rr > 1) continue;
+        var c = Math.sqrt(1 - rr);
+        var lat = Math.asin(Math.max(-1, Math.min(1, b)));
+        var lon = Math.atan2(a, c);
+        var u = lon / (2 * Math.PI) + 0.5 + off;
+        u -= Math.floor(u);
+        var v = 0.5 - lat / Math.PI;
+        var si = ((Math.min(th - 1, Math.max(0, Math.round(v * (th - 1)))) * tw) + ((u * tw) | 0)) * 4;
+        var lum = isSun ? 1 : 0.22 + 0.88 * Math.max(0, a * Lx + b * Ly + c * Lz);
+        var oi = (y * size + x) * 4;
+        d[oi] = Math.min(255, td[si] * lum);
+        d[oi + 1] = Math.min(255, td[si + 1] * lum);
+        d[oi + 2] = Math.min(255, td[si + 2] * lum);
+        d[oi + 3] = 255;
+      }
+    }
+    tctx.putImageData(img, 0, 0);
+    ctx.drawImage(tmp, Math.round(cx - half), Math.round(cy - half));
+  }
+
+  function plainDisc(ctx, o, cx, cy, R) {
+    var t = tintOf(o);
+    var g = ctx.createRadialGradient(cx - R * 0.42, cy - R * 0.42, R * 0.1, cx, cy, R);
+    g.addColorStop(0, css(lighten(t, 62)));
+    g.addColorStop(0.58, css(t));
+    g.addColorStop(1, css(darken(t, 92)));
     ctx.fillStyle = g;
-    ctx.beginPath(); ctx.arc(x, y, r, 0, 7); ctx.fill();
-    // terminator shadow on the right
-    var s = ctx.createLinearGradient(x - r, y, x + r, y);
-    s.addColorStop(0, "rgba(4,6,13,0)");
-    s.addColorStop(0.72, "rgba(4,6,13,0)");
-    s.addColorStop(1, "rgba(4,6,13,.6)");
-    ctx.fillStyle = s;
-    ctx.beginPath(); ctx.arc(x, y, r, 0, 7); ctx.fill();
+    ctx.beginPath(); ctx.arc(cx, cy, R, 0, 7); ctx.fill();
   }
-  function clipCircle(ctx, x, y, r, fn) {
-    ctx.save(); ctx.beginPath(); ctx.arc(x, y, r, 0, 7); ctx.clip(); fn(); ctx.restore();
-  }
-  function craters(ctx, R, x, y, r, t, n) {
-    clipCircle(ctx, x, y, r, function () {
-      for (var i = 0; i < n; i++) {
-        var a = R() * 7, d = Math.sqrt(R()) * r * 0.85;
-        var cx = x + Math.cos(a) * d, cy = y + Math.sin(a) * d;
-        var cr = r * (0.04 + R() * 0.1);
-        ctx.fillStyle = css(darken(t, 55), 0.5);
-        ctx.beginPath(); ctx.arc(cx, cy, cr, 0, 7); ctx.fill();
-        ctx.strokeStyle = css(lighten(t, 45), 0.35); ctx.lineWidth = Math.max(0.6, cr * 0.2);
-        ctx.beginPath(); ctx.arc(cx, cy, cr, Math.PI * 0.9, Math.PI * 1.7); ctx.stroke();
-      }
-    });
-  }
-  function bands(ctx, R, x, y, r, t, spot) {
-    clipCircle(ctx, x, y, r, function () {
-      var n = 7 + Math.floor(R() * 4);
-      for (var i = 0; i < n; i++) {
-        var by = y - r + (i + 0.5) * (2 * r / n);
-        var bh = (2 * r / n) * (0.55 + R() * 0.5);
-        var tone = R() < 0.5 ? lighten(t, 18 + R() * 25) : darken(t, 12 + R() * 30);
-        ctx.fillStyle = css(tone, 0.55);
-        ctx.beginPath();
-        ctx.ellipse(x, by + Math.sin(i * 2.1) * r * 0.02, r * 1.05, bh / 2, 0, 0, 7);
-        ctx.fill();
-      }
-      if (spot) {
-        ctx.fillStyle = "rgba(190,90,60,.75)";
-        ctx.beginPath(); ctx.ellipse(x - r * 0.3, y + r * 0.32, r * 0.2, r * 0.12, -0.2, 0, 7); ctx.fill();
-        ctx.fillStyle = "rgba(220,140,100,.5)";
-        ctx.beginPath(); ctx.ellipse(x - r * 0.3, y + r * 0.32, r * 0.12, r * 0.07, -0.2, 0, 7); ctx.fill();
-      }
-    });
-    // re-shade after banding
-    var s = ctx.createLinearGradient(x - r, y, x + r, y);
-    s.addColorStop(0, "rgba(4,6,13,0)"); s.addColorStop(0.72, "rgba(4,6,13,0)"); s.addColorStop(1, "rgba(4,6,13,.6)");
-    ctx.fillStyle = s; ctx.beginPath(); ctx.arc(x, y, r, 0, 7); ctx.fill();
-  }
-  function ringSystem(ctx, x, y, r, tilt, colour, width, alpha) {
-    // back half first (above the planet), front half after the sphere is drawn by caller order
+
+  function ringHalf(ctx, cx, cy, R, ring, back) {
     ctx.save();
-    ctx.translate(x, y); ctx.rotate(tilt);
-    ctx.strokeStyle = css(colour, alpha);
-    ctx.lineWidth = width;
-    ctx.beginPath(); ctx.ellipse(0, 0, r * 1.9, r * 0.55, 0, Math.PI, 2 * Math.PI); ctx.stroke();
-    ctx.restore();
-  }
-  function ringFront(ctx, x, y, r, tilt, colour, width, alpha) {
-    ctx.save();
-    ctx.translate(x, y); ctx.rotate(tilt);
-    ctx.strokeStyle = css(colour, alpha);
-    ctx.lineWidth = width;
-    ctx.beginPath(); ctx.ellipse(0, 0, r * 1.9, r * 0.55, 0, 0, Math.PI); ctx.stroke();
-    ctx.restore();
-  }
-  function lumpy(ctx, R, x, y, r, t) {
-    var n = 9 + Math.floor(R() * 4);
-    var pts = [];
-    for (var i = 0; i < n; i++) {
-      var a = (i / n) * 2 * Math.PI;
-      var rr = r * (0.68 + R() * 0.5);
-      pts.push([x + Math.cos(a) * rr, y + Math.sin(a) * rr]);
-    }
-    var g = ctx.createRadialGradient(x - r * 0.4, y - r * 0.4, r * 0.1, x, y, r * 1.15);
-    g.addColorStop(0, css(lighten(t, 55)));
-    g.addColorStop(0.6, css(t));
-    g.addColorStop(1, css(darken(t, 80)));
-    ctx.fillStyle = g;
+    ctx.translate(cx, cy); ctx.rotate(0.34);
+    ctx.strokeStyle = "rgba(226,208,176," + ring.alpha + ")";
+    var mid = (ring.inner + ring.outer) / 2;
+    ctx.lineWidth = Math.max(1, R * (ring.outer - ring.inner));
     ctx.beginPath();
-    ctx.moveTo(pts[0][0], pts[0][1]);
-    for (var k = 1; k <= n; k++) {
-      var p = pts[k % n], q = pts[(k + 1) % n];
-      ctx.quadraticCurveTo(p[0], p[1], (p[0] + q[0]) / 2, (p[1] + q[1]) / 2);
-    }
-    ctx.closePath(); ctx.fill();
-    ctx.save(); ctx.clip();
-    for (var c = 0; c < 6; c++) {
-      var ca = R() * 7, cd = Math.sqrt(R()) * r * 0.7;
-      ctx.fillStyle = css(darken(t, 50), 0.5);
-      ctx.beginPath(); ctx.arc(x + Math.cos(ca) * cd, y + Math.sin(ca) * cd, r * (0.06 + R() * 0.12), 0, 7); ctx.fill();
-    }
+    ctx.ellipse(0, 0, R * mid, R * mid * Math.abs(Math.cos(ring.tilt)) + R * 0.02,
+      0, back ? Math.PI : 0, back ? 2 * Math.PI : Math.PI);
+    ctx.stroke();
     ctx.restore();
-  }
-  function cometFace(ctx, R, x, y, r, t) {
-    // tail away to the lower-right (the sun sits upper-left in every portrait)
-    var tg = ctx.createLinearGradient(x, y, x + r * 3.1, y + r * 1.9);
-    tg.addColorStop(0, css(lighten(t, 60), 0.5));
-    tg.addColorStop(1, css(t, 0));
-    ctx.fillStyle = tg;
-    ctx.beginPath();
-    ctx.moveTo(x - r * 0.3, y - r * 0.7);
-    ctx.quadraticCurveTo(x + r * 2.1, y + r * 0.1, x + r * 3.1, y + r * 1.9);
-    ctx.quadraticCurveTo(x + r * 1.6, y + r * 1.6, x - r * 0.6, y + r * 0.5);
-    ctx.closePath(); ctx.fill();
-    // straight blue ion tail
-    ctx.strokeStyle = "rgba(120,190,255,.4)"; ctx.lineWidth = Math.max(1, r * 0.12);
-    ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x + r * 3.3, y + r * 1.1); ctx.stroke();
-    // coma
-    var cg = ctx.createRadialGradient(x, y, 0, x, y, r * 1.4);
-    cg.addColorStop(0, css(lighten(t, 80), 0.9));
-    cg.addColorStop(1, css(t, 0));
-    ctx.fillStyle = cg;
-    ctx.beginPath(); ctx.arc(x, y, r * 1.4, 0, 7); ctx.fill();
-    lumpy(ctx, R, x, y, r * 0.4, darken(t, 40));
-  }
-  function starFace(ctx, R, x, y, r) {
-    var t = TINT.sun;
-    var halo = ctx.createRadialGradient(x, y, r * 0.3, x, y, r * 2.2);
-    halo.addColorStop(0, "rgba(255,200,90,.5)");
-    halo.addColorStop(0.5, "rgba(255,140,50,.16)");
-    halo.addColorStop(1, "rgba(255,120,40,0)");
-    ctx.fillStyle = halo;
-    ctx.fillRect(x - r * 2.4, y - r * 2.4, r * 4.8, r * 4.8);
-    for (var i = 0; i < 10; i++) {
-      var a = R() * 7;
-      ctx.strokeStyle = "rgba(255,180,80," + (0.15 + R() * 0.25) + ")";
-      ctx.lineWidth = 1.4;
-      ctx.beginPath();
-      ctx.arc(x + Math.cos(a) * r * 1.05, y + Math.sin(a) * r * 1.05, r * (0.14 + R() * 0.22),
-        a + Math.PI * 0.8, a + Math.PI * 1.9);
-      ctx.stroke();
-    }
-    var g = ctx.createRadialGradient(x - r * 0.3, y - r * 0.3, r * 0.1, x, y, r);
-    g.addColorStop(0, "#fff3d0");
-    g.addColorStop(0.55, css(t));
-    g.addColorStop(1, "rgba(220,90,30,.95)");
-    ctx.fillStyle = g;
-    ctx.beginPath(); ctx.arc(x, y, r, 0, 7); ctx.fill();
-    clipCircle(ctx, x, y, r, function () {
-      for (var k = 0; k < 14; k++) {
-        ctx.fillStyle = "rgba(160,60,20," + (0.12 + R() * 0.2) + ")";
-        var sx = x - r + R() * 2 * r, sy = y - r + R() * 2 * r;
-        ctx.beginPath(); ctx.arc(sx, sy, r * (0.03 + R() * 0.06), 0, 7); ctx.fill();
-      }
-    });
   }
 
   function paint(canvas, o) {
     var ctx = canvas.getContext("2d");
-    var s = canvas.width;
-    var x = s / 2, y = canvas.height / 2, r = Math.min(x, y) * 0.52;
-    var R = rng(hash(o.id));
-    var t = tintOf(o);
+    var cx = canvas.width / 2, cy = canvas.height / 2;
+    var R = Math.min(cx, cy) * 0.62;
     ctx.clearRect(0, 0, canvas.width, canvas.height);
-    // backdrop stars
-    for (var i = 0; i < s / 8; i++) {
-      ctx.fillStyle = "rgba(220,229,245," + (0.06 + R() * 0.2) + ")";
-      ctx.fillRect(R() * canvas.width, R() * canvas.height, 1, 1);
-    }
-    var detail = s >= 90;
 
-    if (o.cls === "star") { starFace(ctx, R, x, y, r); return; }
+    var ring = RINGS[o.id];
+    if (ring) R = Math.min(cx, cy) * 0.42;
+
+    if (o.cls === "star") {
+      var halo = ctx.createRadialGradient(cx, cy, R * 0.7, cx, cy, R * 1.9);
+      halo.addColorStop(0, "rgba(255,190,80,.45)");
+      halo.addColorStop(0.5, "rgba(255,140,50,.15)");
+      halo.addColorStop(1, "rgba(255,120,40,0)");
+      ctx.fillStyle = halo;
+      ctx.beginPath(); ctx.arc(cx, cy, R * 1.9, 0, 7); ctx.fill();
+    }
     if (o.cls === "hypothesis") {
-      ctx.setLineDash([6, 5]);
-      ctx.strokeStyle = css(t, 0.8); ctx.lineWidth = 2;
-      ctx.beginPath(); ctx.arc(x, y, r, 0, 7); ctx.stroke();
+      var t = tintOf(o);
+      ctx.setLineDash([Math.max(3, R * 0.16), Math.max(3, R * 0.13)]);
+      ctx.strokeStyle = css(t, 0.85); ctx.lineWidth = Math.max(1.5, R * 0.06);
+      ctx.beginPath(); ctx.arc(cx, cy, R, 0, 7); ctx.stroke();
       ctx.setLineDash([]);
-      var hg = ctx.createRadialGradient(x, y, 0, x, y, r);
-      hg.addColorStop(0, css(t, 0.25)); hg.addColorStop(1, css(t, 0));
-      ctx.fillStyle = hg; ctx.beginPath(); ctx.arc(x, y, r, 0, 7); ctx.fill();
-      ctx.fillStyle = css(t, 0.9); ctx.font = "bold " + (r * 0.9) + "px system-ui, sans-serif";
-      ctx.textAlign = "center"; ctx.textBaseline = "middle";
-      ctx.fillText("?", x, y + r * 0.05);
-      return;
-    }
-    if (o.cls === "comet" || (o.cls === "interstellar" && o.id !== "oumuamua")) {
-      cometFace(ctx, R, x, y, r * 0.8, t); return;
-    }
-    if (o.id === "oumuamua") {
-      ctx.save(); ctx.translate(x, y); ctx.rotate(-0.5);
-      var og = ctx.createLinearGradient(-r, 0, r, 0);
-      og.addColorStop(0, css(darken(t, 60))); og.addColorStop(0.4, css(lighten(t, 30))); og.addColorStop(1, css(darken(t, 80)));
-      ctx.fillStyle = og;
-      ctx.beginPath(); ctx.ellipse(0, 0, r * 1.25, r * 0.28, 0, 0, 7); ctx.fill();
-      ctx.restore(); return;
-    }
-    if (o.cls === "asteroid" || (o.cls === "moon" && o.radiusKm < 120) || o.cls === "centaur") {
-      lumpy(ctx, R, x, y, r * 0.85, t);
-      if (o.id === "psyche" && detail) {
-        ctx.fillStyle = "rgba(240,240,250,.35)";
-        ctx.beginPath(); ctx.arc(x - r * 0.25, y - r * 0.2, r * 0.12, 0, 7); ctx.fill();
-      }
       return;
     }
 
-    var gas = ["jupiter", "saturn", "uranus", "neptune"].indexOf(o.id) >= 0;
-    var icy = ["europa", "enceladus"].indexOf(o.id) >= 0;
+    if (ring) ringHalf(ctx, cx, cy, R, ring, true);
 
-    if (o.id === "saturn") ringSystem(ctx, x, y, r, 0.32, lighten(t, 40), r * 0.16, 0.55);
-    if (o.id === "uranus") ringSystem(ctx, x, y, r, 1.35, lighten(t, 30), r * 0.05, 0.5);
-    if (o.id === "chariklo") ringSystem(ctx, x, y, r, 0.5, lighten(t, 50), r * 0.04, 0.6);
+    var map = getMap(o.id, function () { paint(canvas, o); });
+    if (map) drawMappedGlobe(ctx, o, cx, cy, R, map);
+    else plainDisc(ctx, o, cx, cy, R);
 
-    sphere(ctx, x, y, r, t);
-    if (gas) bands(ctx, R, x, y, r, t, o.id === "jupiter");
-    else if (icy && detail) {
-      clipCircle(ctx, x, y, r, function () {
-        for (var c = 0; c < 9; c++) {
-          ctx.strokeStyle = c % 2 ? "rgba(160,110,80,.4)" : "rgba(120,150,190,.35)";
-          ctx.lineWidth = 0.8 + R();
-          ctx.beginPath();
-          ctx.moveTo(x - r + R() * 2 * r, y - r + R() * 2 * r);
-          ctx.quadraticCurveTo(x - r + R() * 2 * r, y - r + R() * 2 * r, x - r + R() * 2 * r, y - r + R() * 2 * r);
-          ctx.stroke();
-        }
-      });
-    }
-    else if (o.id === "earth" && detail) {
-      clipCircle(ctx, x, y, r, function () {
-        for (var c = 0; c < 6; c++) {
-          ctx.fillStyle = "rgba(90,160,90,.75)";
-          ctx.beginPath();
-          ctx.ellipse(x - r + R() * 2 * r, y - r + R() * 2 * r, r * (0.12 + R() * 0.22), r * (0.08 + R() * 0.14), R() * 3, 0, 7);
-          ctx.fill();
-        }
-        for (var w = 0; w < 7; w++) {
-          ctx.fillStyle = "rgba(255,255,255,.5)";
-          ctx.beginPath();
-          ctx.ellipse(x - r + R() * 2 * r, y - r + R() * 2 * r, r * (0.2 + R() * 0.25), r * 0.05, R() * 3, 0, 7);
-          ctx.fill();
-        }
-      });
-    }
-    else if (o.id === "mars" && detail) {
-      clipCircle(ctx, x, y, r, function () {
-        for (var c = 0; c < 5; c++) {
-          ctx.fillStyle = "rgba(120,60,40,.4)";
-          ctx.beginPath();
-          ctx.ellipse(x - r + R() * 2 * r, y - r + R() * 2 * r, r * (0.15 + R() * 0.2), r * (0.1 + R() * 0.1), R() * 3, 0, 7);
-          ctx.fill();
-        }
-        ctx.fillStyle = "rgba(255,255,255,.85)";
-        ctx.beginPath(); ctx.ellipse(x, y - r * 0.9, r * 0.3, r * 0.14, 0, 0, 7); ctx.fill();
-      });
-    }
-    else if (o.id === "venus" && detail) {
-      clipCircle(ctx, x, y, r, function () {
-        for (var c = 0; c < 6; c++) {
-          ctx.strokeStyle = "rgba(255,235,190,.3)"; ctx.lineWidth = r * 0.1;
-          ctx.beginPath();
-          ctx.arc(x, y + (R() - 0.5) * r, r * (0.5 + R() * 0.5), 3.4 + R(), 5.6 + R());
-          ctx.stroke();
-        }
-      });
-    }
-    else if (o.id === "pluto" && detail) {
-      clipCircle(ctx, x, y, r, function () {
-        ctx.fillStyle = "rgba(240,230,210,.5)";
-        ctx.beginPath();
-        ctx.moveTo(x - r * 0.15, y + r * 0.55);
-        ctx.bezierCurveTo(x - r * 0.5, y + r * 0.1, x - r * 0.15, y - r * 0.1, x + r * 0.05, y + r * 0.15);
-        ctx.bezierCurveTo(x + r * 0.25, y - r * 0.1, x + r * 0.55, y + r * 0.15, x + r * 0.2, y + r * 0.55);
-        ctx.closePath(); ctx.fill();
-      });
-    }
-    else if (detail && (o.cls === "moon" || o.cls === "planet" || o.cls === "dwarf" || o.cls === "tno")) {
-      craters(ctx, R, x, y, r, t, o.id === "mercury" || o.id === "moon" ? 16 : 7);
-    }
-    if (o.id === "titan") {
-      var haze = ctx.createRadialGradient(x, y, r, x, y, r * 1.3);
-      haze.addColorStop(0, "rgba(230,160,70,.4)"); haze.addColorStop(1, "rgba(230,160,70,0)");
-      ctx.fillStyle = haze; ctx.beginPath(); ctx.arc(x, y, r * 1.3, 0, 7); ctx.fill();
-    }
-    if (o.id === "saturn") ringFront(ctx, x, y, r, 0.32, lighten(t, 55), r * 0.16, 0.8);
-    if (o.id === "uranus") ringFront(ctx, x, y, r, 1.35, lighten(t, 40), r * 0.05, 0.7);
-    if (o.id === "chariklo") ringFront(ctx, x, y, r, 0.5, lighten(t, 60), r * 0.04, 0.8);
+    if (ring) ringHalf(ctx, cx, cy, R, ring, false);
   }
 
-  /* Lazy-paint every canvas.portrait-canvas[data-obj] as it scrolls into view. */
+  /* Lazy-paint every canvas[data-obj] as it scrolls into view. */
   function autoPaint(root) {
     var byId = window.VSS_BY_ID || {};
     var els = (root || document).querySelectorAll("canvas[data-obj]");
@@ -341,5 +178,5 @@
     els.forEach(function (c) { io.observe(c); });
   }
 
-  window.VSS_ART = { paint: paint, autoPaint: autoPaint, tintOf: tintOf };
+  window.VSS_ART = { paint: paint, autoPaint: autoPaint, tintOf: tintOf, hasMap: function (id) { return !!(window.VSS_MAPS || {})[id]; } };
 })();
