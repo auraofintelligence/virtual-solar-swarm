@@ -11,6 +11,7 @@ An interactive, fully static website for designing a solar-system-wide satellite
 | Page | What it models |
 |---|---|
 | `index.html` | The idea, the numbers, and how the tools chain together |
+| `scale.html` | Every number as one dial: allocation solved at any fleet size, tested against the do-no-harm and earn-its-keep gates |
 | `targets.html` | The full 200-object catalogue, searchable and sortable |
 | `object.html?id=` | Per-target dossier: orbit, stable orbits, windows, fit-out, cadence |
 | `map.html` | Animated 3D heliocentric map driven by real orbital elements; drag to tilt and spin |

@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="en-AU">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>The scale : Virtual Solar Swarm</title>
+<meta name="description" content="Every number in the study as one dial: fleet allocation solved at any scale, tested against two gates: does it disrupt the solar system, and does it earn its keep for humanity.">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🛰️</text></svg>">
+<link rel="stylesheet" href="assets/style.css">
+</head>
+<body>
+<header id="site-header"></header>
+<main>
+  <h1>The scale</h1>
+  <p class="lede">No hard rule says 200 targets, or four satellites to a picket, or 1,300 in the fleet. Those are starting points, the place a long idea began counting. This page treats every number in the study as one dial, solves the allocation at any setting, and holds the result against the two questions that decide whether a thing like this deserves to exist.</p>
+
+  <div class="callout warm">
+    The two gates. <strong>One:</strong> it must not disrupt the solar system: no wreckage, no crowding, no contaminated oceans, no commons spoiled. <strong>Two:</strong> it must earn its keep: warnings that protect people, custody of the hazards, knowledge given freely, a door answered when the galaxy sends a visitor. A network that passes both gates at some scale has made its case to be built; one that cannot, has not.
+  </div>
+
+  <div class="controls" style="margin-top:1.6rem">
+    <label style="flex:1; min-width:260px">Fleet dial
+      <input type="range" id="F" min="0" max="1000" value="500" style="width:100%; max-width:520px">
+    </label>
+    <span class="stat" id="F-out" style="min-width:130px">·</span>
+  </div>
+  <div class="chip-row">
+    <button class="chip" data-f="150">Triage</button>
+    <button class="chip" data-f="1332">The starting point</button>
+    <button class="chip" data-f="8000">Census lit</button>
+    <button class="chip" data-f="20000">Deep abundance</button>
+  </div>
+
+  <div class="grid cols-4">
+    <div class="card"><div class="stat" id="s-funded">·</div><div class="stat-label">bodies with dedicated watchers</div></div>
+    <div class="card"><div class="stat" id="s-repl">·</div><div class="stat-label">factory pace, satellites / year</div></div>
+    <div class="card"><div class="stat" id="s-cost">·</div><div class="stat-label">fleet hardware cost</div></div>
+    <div class="card"><div class="stat" id="s-data">·</div><div class="stat-label">open data / day</div></div>
+  </div>
+
+  <h2>What the dial buys</h2>
+  <div class="table-wrap">
+    <table><thead><tr><th>Station type</th><th class="num">Satellites each</th><th>At this scale</th></tr></thead>
+    <tbody id="alloc-rows"></tbody></table>
+  </div>
+  <p class="dim small" id="alloc-note"></p>
+
+  <div class="grid cols-2">
+    <div class="card">
+      <h3>Gate one · leave the solar system unharmed</h3>
+      <p id="gate1-verdict"></p>
+      <ul id="gate1-rows" style="list-style:none; display:grid; gap:.6rem"></ul>
+    </div>
+    <div class="card">
+      <h3>Gate two · earn its keep <span class="dim" id="gate2-score"></span></h3>
+      <ul id="gate2-rows" style="list-style:none; display:grid; gap:.6rem"></ul>
+    </div>
+  </div>
+
+  <h2>What this page is, honestly</h2>
+  <p class="dim">This is the highest-altitude, lowest-fidelity model on the site: proportional scaling laws pinned so the dial at 1,332 reproduces the starting design exactly, with priority-ranked promotion of the census as the budget grows. Its job is to make the shape of the question computable, not to settle it. The finer pages (<a href="fleet.html">fleet</a>, <a href="cadence.html">cadence</a>, <a href="convoys.html">convoys</a>, <a href="network.html">network</a>) currently run at the starting point; solving the whole system to a fidelity worth building is the actual project, and every model here is a rung toward it.</p>
+  <p class="dim">The compass the study steers by: a network like this is worth building only if it empowers joyful, responsible abundance for humanity and its place in the galaxy, and harms nothing on the way. That is the standard both gates are trying to measure, in <a href="https://gajra.earth">so many words</a>.</p>
+</main>
+<footer id="site-footer"></footer>
+<script src="assets/astro.js"></script>
+<script src="data/objects-core.js"></script>
+<script src="data/objects-moons.js"></script>
+<script src="data/objects-asteroids.js"></script>
+<script src="data/objects-comets.js"></script>
+<script src="data/objects-tnos.js"></script>
+<script src="data/objects-moons-jupiter2.js"></script>
+<script src="data/objects-moons-saturn2.js"></script>
+<script src="data/objects-moons-un2.js"></script>
+<script src="data/objects-small2.js"></script>
+<script src="data/objects-tnos2.js"></script>
+<script src="data/objects-hypothesis.js"></script>
+<script src="data/objects.js"></script>
+<script src="data/sensors.js"></script>
+<script src="data/buses.js"></script>
+<script src="assets/core.js"></script>
+<script src="assets/scale.js"></script>
+<script>
+VSS.mountChrome("scale.html");
+(function () {
+  var S = window.VSS_SCALE;
+  var slider = document.getElementById("F");
+  var FMIN = Math.log(100), FMAX = Math.log(20000);
+
+  function sliderToF() {
+    var F = Math.round(Math.exp(FMIN + (slider.value / 1000) * (FMAX - FMIN)) / 10) * 10;
+    if (Math.abs(F - 1332) <= 20) F = 1332; // detent at the starting point
+    return F;
+  }
+  function fToSlider(F) { return Math.round(1000 * (Math.log(F) - FMIN) / (FMAX - FMIN)); }
+
+  var tierWords = {
+    observatory: "The solar observatory",
+    swarm: "Priority swarms (each of 7 worlds)",
+    enhanced: "Enhanced pickets (each of 15)",
+    picket: "Baseline pickets",
+    intercept: "Interceptors (each visitor class)"
+  };
+
+  function render() {
+    var F = sliderToF();
+    document.getElementById("F-out").textContent = VSS.fmt(F) + " satellites";
+    var a = S.allocate(F);
+    var sys = S.systems(a);
+    var g1 = S.disruptionGate(a, sys);
+    var g2 = S.worthGate(a, sys);
+
+    document.getElementById("s-funded").textContent = VSS.fmt(a.funded) + " / 384";
+    document.getElementById("s-repl").textContent = VSS.fmt(sys.replPerYear, 0);
+    document.getElementById("s-cost").textContent = "A$" + VSS.fmt(sys.costUsdB * VSS.AUD_PER_USD, 1) + "b";
+    document.getElementById("s-data").textContent = VSS.fmt(sys.dataTBday, 0) + " TB";
+
+    document.getElementById("alloc-rows").innerHTML = Object.keys(tierWords).map(function (t) {
+      return "<tr><td>" + tierWords[t] + "</td><td class='num'>" + VSS.fmt(a.tiers[t]) + "</td>" +
+        "<td class='wrap dim small'>" +
+        (t === "picket"
+          ? (a.unfundedPickets > 0
+            ? a.unfundedPickets + " of the starting pickets go unfunded at this scale; triage by priority."
+            : a.promoted > 0
+              ? "all starting pickets funded, plus " + a.promoted + " census bodies promoted to watchers of their own."
+              : "exactly the starting line-up.")
+          : "") + "</td></tr>";
+    }).join("");
+    document.getElementById("alloc-note").textContent =
+      (a.notes[0] || "") + " A launch rides out roughly every " +
+      (isFinite(sys.launchEveryDays) ? VSS.fmt(sys.launchEveryDays, 1) + " days at steady state" : "·") +
+      ", and the whole fleet would fly as about " + VSS.fmt(sys.convoys) + " convoys. Costs converted at 1 USD to A$1.55, August 2026, hardware only.";
+
+    var v = g1.verdict;
+    document.getElementById("gate1-verdict").innerHTML = v === "ok"
+      ? '<span class="verdict ok">✓ Passes at this scale.</span> <span class="dim small">The solar system barely notices; the one place needing real care is our own doorstep.</span>'
+      : v === "warn" ? '<span class="verdict warn">△ Passes with conditions.</span> <span class="dim small">The home shell now needs serious traffic discipline.</span>'
+        : '<span class="verdict bad">✕ Fails at this scale,</span> <span class="dim small">and it fails at Earth first.</span>';
+    document.getElementById("gate1-rows").innerHTML = g1.checks.map(function (c) {
+      var icon = c.level === "ok" ? "✓" : c.level === "warn" ? "△" : "✕";
+      return '<li><span class="verdict ' + c.level + '">' + icon + "</span> <strong>" + c.title + ".</strong> <span class='dim small'>" + c.text + "</span></li>";
+    }).join("");
+
+    document.getElementById("gate2-score").textContent = "· " + g2.met + " of " + g2.total + " earned";
+    document.getElementById("gate2-rows").innerHTML = g2.rows.map(function (r) {
+      return '<li><span class="verdict ' + (r.met ? "ok" : "warn") + '">' + (r.met ? "✓" : "·") + "</span> <strong>" + r.title + ".</strong> <span class='dim small'>" + r.text + "</span></li>";
+    }).join("");
+  }
+
+  slider.value = fToSlider(1332);
+  slider.addEventListener("input", render);
+  document.querySelectorAll(".chip[data-f]").forEach(function (b) {
+    b.addEventListener("click", function () { slider.value = fToSlider(+b.dataset.f); render(); });
+  });
+  render();
+})();
+</script>
+</body>
+</html>

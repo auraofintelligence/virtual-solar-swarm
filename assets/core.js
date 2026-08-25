@@ -4,6 +4,7 @@
 
   var NAV = [
     ["index.html", "Home"],
+    ["scale.html", "The scale"],
     ["targets.html", "Catalogue"],
     ["map.html", "Orbit map"],
     ["gravity.html", "Gravity lab"],
