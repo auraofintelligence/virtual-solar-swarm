@@ -18,10 +18,17 @@
 <script src="data/objects-asteroids.js"></script>
 <script src="data/objects-comets.js"></script>
 <script src="data/objects-tnos.js"></script>
+<script src="data/objects-moons-jupiter2.js"></script>
+<script src="data/objects-moons-saturn2.js"></script>
+<script src="data/objects-moons-un2.js"></script>
+<script src="data/objects-small2.js"></script>
+<script src="data/objects-tnos2.js"></script>
+<script src="data/objects-hypothesis.js"></script>
 <script src="data/objects.js"></script>
 <script src="data/sensors.js"></script>
 <script src="data/buses.js"></script>
 <script src="assets/core.js"></script>
+<script src="assets/art.js"></script>
 <script>
 VSS.mountChrome("targets.html");
 (function () {
@@ -60,10 +67,16 @@ VSS.mountChrome("targets.html");
   else periodLine = "laps the Sun every " + VSS.fmtDur(A.periodYearsOf(ho));
 
   var html = "";
-  html += '<p class="faint"><a href="targets.html">← the 200</a></p>';
+  html += '<p class="faint"><a href="targets.html">← the catalogue</a></p>';
+  html += '<div class="portrait-hero"><canvas id="portrait" width="300" height="300"></canvas>' +
+    '<div class="faint">portrait drawn by code from its real properties</div></div>';
   html += "<h1>" + o.name + "</h1>";
-  html += '<p><span class="badge t-' + o.tier + '">' + VSS.TIERS[o.tier].label + " · " + sats + " satellites</span> &nbsp; " +
+  html += '<p><span class="badge t-' + o.tier + '">' + VSS.TIERS[o.tier].label +
+    (o.tier === "survey" ? "" : " · " + sats + " satellites") + "</span> &nbsp; " +
     '<span class="dim">' + (VSS.CLS_LABEL[o.cls] || o.cls) + " · " + o.group + "</span></p>";
+  if (o.tier === "survey") {
+    html += '<p class="dim small">A census entry: no dedicated picket, but the host system\'s swarm and the survey sweeps keep it in view, and any of it is one funding vote away from a picket of its own.</p>';
+  }
   html += '<p class="lede">' + (o.why || "") + "</p>";
 
   html += '<div class="grid cols-2">';
@@ -153,13 +166,17 @@ VSS.mountChrome("targets.html");
     "<dt>Bus</dt><dd>" + bus.name + ". " + bus.role + "</dd>" +
     "<dt>Payload</dt><dd>" + VSS.fmt(kitMass, 1) + " kg of " + VSS.fmt(bus.capacityKg) + " kg capacity</dd>" +
     "<dt>Cost each</dt><dd>" + VSS.fmtAudFull(kitCost + bus.costUsdM) + " at production scale</dd>" +
-    "<dt>Whole picket</dt><dd>" + VSS.fmtAud((kitCost + bus.costUsdM) * sats) + " for all " + sats + "</dd>" +
+    (o.tier === "survey"
+      ? "<dt>Station</dt><dd>none dedicated; the host swarm looks in on schedule</dd>"
+      : "<dt>Whole picket</dt><dd>" + VSS.fmtAud((kitCost + bus.costUsdM) * sats) + " for all " + sats + "</dd>") +
     "</dl>";
   html += '<p class="small"><a href="builder.html?id=' + o.id + '">Open in the builder →</a></p></div></div>';
 
   // ----- keeping it alive -----
   html += '<div class="card"><h3>Keeping the picket whole</h3>';
-  if (isInterstellar) {
+  if (o.tier === "survey") {
+    html += '<p class="dim small">No picket to keep whole. If this body were promoted, its watchers would ride the host system\'s <a href="convoys.html">renewal convoys</a> like everything else out this way.</p>';
+  } else if (isInterstellar) {
     html += '<p class="dim small">Interceptors are not replaced; they are spent. The cadence model instead keeps two fuelled and waiting at all times.</p>';
   } else if (ho && ho.e > 0.85) {
     html += '<p class="dim small">A body on a dive-and-vanish orbit cannot be resupplied on a schedule; its picket of ' + sats + " would launch with the perihelion intercept and carry its own spares, riding along for the whole pass.</p>";
@@ -174,7 +191,30 @@ VSS.mountChrome("targets.html");
   }
   html += "</div>";
 
+  // ----- the system around it -----
+  var kids = window.VSS_OBJECTS.filter(function (k) { return k.parent === o.id; });
+  if (kids.length) {
+    kids.sort(function (a, b) { return (a.orbit.aKm || 0) - (b.orbit.aKm || 0); });
+    var funded = kids.filter(function (k) { return k.tier !== "survey"; }).length;
+    html += '<h2 style="clear:both">In this system</h2>' +
+      '<p class="dim small">' + kids.length + " catalogued companions, " + funded + " with dedicated watchers; the rest are census entries covered by the system swarm.</p>" +
+      '<div class="table-wrap"><table><thead><tr><th></th><th>Name</th><th class="num">Distance</th><th class="num">Radius (km)</th><th>Tier</th><th>Note</th></tr></thead><tbody>' +
+      kids.map(function (k) {
+        return "<tr><td class='thumb-cell'><canvas class='thumb' width='42' height='42' data-obj='" + k.id + "'></canvas></td>" +
+          "<td><a href='object.html?id=" + k.id + "'>" + k.name + "</a></td>" +
+          "<td class='num'>" + VSS.fmtKm(k.orbit.aKm) + "</td>" +
+          "<td class='num'>" + VSS.fmt(k.radiusKm, k.radiusKm < 10 ? 1 : 0) + "</td>" +
+          "<td><span class='badge t-" + k.tier + "'>" + VSS.TIERS[k.tier].label + "</span></td>" +
+          "<td class='wrap dim small'>" + (k.why || "") + "</td></tr>";
+      }).join("") + "</tbody></table></div>";
+  }
+  if (parent) {
+    html += '<p class="small">Part of the <a href="object.html?id=' + parent.id + '">' + parent.name + " system →</a></p>";
+  }
+
   page.innerHTML = html;
+  window.VSS_ART.paint(document.getElementById("portrait"), o);
+  window.VSS_ART.autoPaint(page);
 })();
 </script>
 </body>

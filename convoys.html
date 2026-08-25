@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="en-AU">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Convoys : Virtual Solar Swarm</title>
+<meta name="description" content="Batch missions and renewal planning: satellites ride-share to each destination system in convoys, disperse on arrival, and fresh replacements ride every launch window after that.">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🛰️</text></svg>">
+<link rel="stylesheet" href="assets/style.css">
+</head>
+<body>
+<header id="site-header"></header>
+<main>
+  <h1>Convoys</h1>
+  <p class="lede">Nothing here flies alone. Satellites ride-share: one lifter and one cruise tug carry a whole batch to a destination system, and only on arrival do they scatter to their stations. Then the drumbeat starts: every time that system's launch window comes around again, a renewal convoy rides it with fresh satellites for the ones wearing out.</p>
+
+  <div class="controls">
+    <label>Convoy capacity <input type="range" id="cap" min="8" max="48" step="4" value="24"></label>
+    <strong id="cap-out">24 satellites</strong>
+    <label>Hot spares carried <input type="range" id="spares" min="0" max="30" step="5" value="10"></label>
+    <strong id="spares-out">10%</strong>
+  </div>
+
+  <div class="grid cols-3">
+    <div class="card"><div class="stat" id="s-flights">·</div><div class="stat-label">deployment convoys</div></div>
+    <div class="card"><div class="stat" id="s-saved">·</div><div class="stat-label">solo launches avoided</div></div>
+    <div class="card"><div class="stat" id="s-renew">·</div><div class="stat-label">renewal convoys / year</div></div>
+  </div>
+  <p class="dim small">A fleet of about 1,300 does not mean 1,300 launches. It means a much shorter list of well-packed convoys, and the solar system's own timetable, from the <a href="windows.html">windows model</a>, decides when each one can leave.</p>
+
+  <h2>The convoy board</h2>
+  <div class="table-wrap">
+    <table><thead><tr>
+      <th>Destination</th><th class="num">Satellites</th><th class="num">Deploy convoys</th>
+      <th>Next door</th><th class="num">Cruise</th><th>Window rhythm</th>
+      <th class="num">Renewal need</th><th>Renewal ride</th>
+    </tr></thead><tbody id="rows"></tbody></table>
+  </div>
+  <p class="faint">Renewal need is the average number of replacement satellites that come due between one window and the next, from each environment's design life. Clusters like the main belt are served as touring convoys that drop satellites at several neighbours on one run; deep clusters renew on generational timetables. Interstellar interceptors are not convoyed; they wait fuelled near Earth.</p>
+
+  <h2>How a convoy works</h2>
+  <div class="grid cols-3">
+    <div class="card"><h3>1 · Pack</h3><p class="dim small">A heavy lifter climbs the well with a cruise tug and a rack of satellites, folded like chairs. The <a href="rides.html">rides page</a> holds both machines.</p></div>
+    <div class="card"><h3>2 · Cruise</h3><p class="dim small">One tug does the interplanetary work for the whole rack, then brakes the stack into a wide capture orbit at the destination, the same move you can play by hand in the <a href="gravity.html">gravity lab</a>.</p></div>
+    <div class="card"><h3>3 · Disperse</h3><p class="dim small">From the wide orbit, each satellite spends a few hundred metres per second of its own delta-v drifting down to its station: moons, ledges and pickets. The tug either returns for reuse or retires as a comms relay for the <a href="network.html">network</a>.</p></div>
+  </div>
+</main>
+<footer id="site-footer"></footer>
+<script src="assets/astro.js"></script>
+<script src="data/objects-core.js"></script>
+<script src="data/objects-moons.js"></script>
+<script src="data/objects-asteroids.js"></script>
+<script src="data/objects-comets.js"></script>
+<script src="data/objects-tnos.js"></script>
+<script src="data/objects-moons-jupiter2.js"></script>
+<script src="data/objects-moons-saturn2.js"></script>
+<script src="data/objects-moons-un2.js"></script>
+<script src="data/objects-small2.js"></script>
+<script src="data/objects-tnos2.js"></script>
+<script src="data/objects-hypothesis.js"></script>
+<script src="data/objects.js"></script>
+<script src="data/sensors.js"></script>
+<script src="data/buses.js"></script>
+<script src="assets/core.js"></script>
+<script>
+VSS.mountChrome("convoys.html");
+(function () {
+  var A = window.ASTRO;
+  var byId = window.VSS_BY_ID;
+  var earth = byId.earth.orbit;
+  var now = new Date();
+
+  function lifeOf(o) { return VSS.DESIGN_LIFE[o.env] || 15; }
+
+  // ---- build destinations: planetary systems, then clusters by group ----
+  var dests = [];
+  function sysDest(repId, label) {
+    var rep = byId[repId];
+    var members = [rep].concat(window.VSS_OBJECTS.filter(function (o) { return o.parent === repId; }));
+    dests.push({ label: label, rep: rep, members: members, kind: "system" });
+  }
+  dests.push({ label: "Helios (the Sun)", rep: byId.sun, members: [byId.sun], kind: "sun" });
+  dests.push({ label: "Earth and Moon (home)", rep: byId.earth,
+    members: [byId.earth].concat(window.VSS_OBJECTS.filter(function (o) { return o.parent === "earth"; })), kind: "home" });
+  sysDest("mercury", "Mercury");
+  sysDest("venus", "Venus");
+  sysDest("mars", "Mars system");
+  sysDest("jupiter", "Jupiter system");
+  sysDest("saturn", "Saturn system");
+  sysDest("uranus", "Uranus system");
+  sysDest("neptune", "Neptune system");
+  sysDest("pluto", "Pluto system");
+
+  var clusterGroups = ["Main belt", "Near-Earth", "Jupiter trojans", "Mars trojans", "Centaurs", "Comets", "Dwarf planets", "Trans-Neptunian objects"];
+  clusterGroups.forEach(function (g) {
+    var roots = window.VSS_OBJECTS.filter(function (o) { return o.group === g && !o.parent && o.cls !== "hypothesis"; });
+    if (!roots.length) return;
+    var members = roots.slice();
+    roots.forEach(function (r) {
+      window.VSS_OBJECTS.forEach(function (o) { if (o.parent === r.id) members.push(o); });
+    });
+    // exclude pluto (already a system) from dwarf cluster
+    members = members.filter(function (o) { return o.id !== "pluto" && o.parent !== "pluto"; });
+    var dedicated = members.filter(function (o) { return o.tier !== "survey" && !(VSS.helioOrbitOf(o).e > 0.85); });
+    var pool = dedicated.length ? dedicated : members;
+    var as = pool.map(function (o) { return VSS.helioOrbitOf(o).aAU; }).sort(function (a, b) { return a - b; });
+    var median = as[Math.floor(as.length / 2)];
+    dests.push({ label: g + " (touring)", rep: null, aAU: median, members: members, kind: "cluster" });
+  });
+
+  function modelDest(d, cap, sparePct) {
+    var sats = d.members.reduce(function (a, o) { return a + VSS.tierCount(o); }, 0);
+    var rate = d.members.reduce(function (a, o) {
+      var n = VSS.tierCount(o); return n ? a + n / lifeOf(o) : a;
+    }, 0);
+    var out = { label: d.label, sats: sats, rate: rate };
+    var withSpares = Math.ceil(sats * (1 + sparePct / 100));
+    out.flights = sats ? Math.ceil(withSpares / cap) : 0;
+    if (d.kind === "sun") {
+      out.windowTxt = "always open"; out.cruiseTxt = "inward spiral"; out.rhythmTxt = "continuous";
+      out.perWindow = rate; out.renewTxt = "rolling resupply";
+      return out;
+    }
+    if (d.kind === "home") {
+      out.windowTxt = "always open"; out.cruiseTxt = "days"; out.rhythmTxt = "on demand";
+      out.perWindow = rate; out.renewTxt = "rolling resupply";
+      return out;
+    }
+    var aAU = d.rep ? (d.rep.orbit ? d.rep.orbit.aAU : 1) : d.aAU;
+    var ho = d.rep ? d.rep.orbit : { aAU: d.aAU, e: 0, iDeg: 0, omDeg: 0, wDeg: 0, M0Deg: 0, periodYears: Math.pow(d.aAU, 1.5) };
+    var t = A.fastTransfer(1, aAU, 0);
+    var syn = A.synodicYears(1, A.periodYearsOf(ho));
+    var wins = A.windowsForTransfer(earth, ho, now, 1, t);
+    out.windowTxt = wins.length ? VSS.fmtDate(wins[0]) : "irregular";
+    out.cruiseTxt = VSS.fmtDur(Math.min(t.tofYears, 25)) + (t.tofYears > 25 ? " (fast path)" : "");
+    out.rhythmTxt = isFinite(syn) ? "every " + VSS.fmtDur(syn) : "irregular";
+    out.perWindow = isFinite(syn) ? rate * syn : rate;
+    out.renewTxt = rate > 0
+      ? (Math.ceil(out.perWindow / cap)) + " convoy" + (Math.ceil(out.perWindow / cap) > 1 ? "s" : "") + " each window"
+      : "·";
+    return out;
+  }
+
+  function render() {
+    var cap = +document.getElementById("cap").value;
+    var sparePct = +document.getElementById("spares").value;
+    document.getElementById("cap-out").textContent = cap + " satellites";
+    document.getElementById("spares-out").textContent = sparePct + "%";
+    var models = dests.map(function (d) { return modelDest(d, cap, sparePct); });
+    var totFlights = 0, totSats = 0, renewPerYear = 0;
+    models.forEach(function (m) {
+      totFlights += m.flights; totSats += m.sats;
+      renewPerYear += m.rate > 0 ? Math.max(m.rate / cap, 0) : 0;
+    });
+    document.getElementById("s-flights").textContent = VSS.fmt(totFlights);
+    document.getElementById("s-saved").textContent = VSS.fmt(totSats - totFlights);
+    document.getElementById("s-renew").textContent = VSS.fmt(Math.ceil(renewPerYear));
+    document.getElementById("rows").innerHTML = models.filter(function (m) { return m.sats > 0; })
+      .sort(function (a, b) { return b.sats - a.sats; })
+      .map(function (m) {
+        return "<tr><td>" + m.label + "</td><td class='num'>" + VSS.fmt(m.sats) + "</td>" +
+          "<td class='num'>" + m.flights + "</td><td>" + m.windowTxt + "</td>" +
+          "<td class='num'>" + m.cruiseTxt + "</td><td>" + m.rhythmTxt + "</td>" +
+          "<td class='num'>" + VSS.fmt(m.perWindow, 1) + "</td><td>" + m.renewTxt + "</td></tr>";
+      }).join("");
+  }
+
+  document.getElementById("cap").addEventListener("input", render);
+  document.getElementById("spares").addEventListener("input", render);
+  render();
+})();
+</script>
+</body>
+</html>

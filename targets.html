@@ -3,22 +3,32 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>The 200 : Virtual Solar Swarm</title>
-<meta name="description" content="The full 200-object target catalogue of the Virtual Solar Swarm design study.">
+<title>Catalogue : Virtual Solar Swarm</title>
+<meta name="description" content="The Virtual Solar Swarm catalogue: the 200 funded targets and the wider census of named moons and small bodies, searchable, sortable and grouped.">
 <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🛰️</text></svg>">
 <link rel="stylesheet" href="assets/style.css">
 </head>
 <body>
 <header id="site-header"></header>
 <main>
-  <h1>The 200</h1>
-  <p class="lede">Every target in the study, from the Sun to a wandering visitor from another star. The <em>watchers</em> column is how many satellites the default plan would station there. Click any row for the full dossier.</p>
+  <h1>The catalogue</h1>
+  <p class="lede">Two hundred targets carry dedicated satellites; around them rides the census, every named moon of the giants and a deeper sweep of small worlds, watched by the host swarms rather than pickets of their own. Search it, group it, argue with it. Click any row for the full dossier.</p>
 
   <div class="controls">
     <input type="search" id="q" placeholder="Search names and notes…" aria-label="Search targets">
+    <label>Group by
+      <select id="groupby">
+        <option value="group" selected>Neighbourhood</option>
+        <option value="cls">Class</option>
+        <option value="tier">Tier</option>
+        <option value="env">Environment</option>
+        <option value="">No grouping</option>
+      </select>
+    </label>
     <select id="f-tier" aria-label="Filter by tier">
       <option value="">All tiers</option>
     </select>
+    <button class="chip" id="survey-toggle" aria-pressed="true">Census entries shown</button>
     <span class="faint" id="count-note"></span>
   </div>
   <div class="chip-row" id="cls-chips" role="group" aria-label="Filter by class"></div>
@@ -26,14 +36,14 @@
   <div class="table-wrap">
     <table id="tbl">
       <thead><tr>
+        <th></th>
         <th class="sortable" data-k="name">Name</th>
         <th class="sortable" data-k="cls">Class</th>
-        <th class="sortable" data-k="group">Where</th>
         <th class="sortable num" data-k="dist">Distance (AU)</th>
         <th class="sortable num" data-k="radiusKm">Radius (km)</th>
         <th class="sortable" data-k="tier">Tier</th>
         <th class="sortable num" data-k="sats">Watchers</th>
-        <th>Why it earns a picket</th>
+        <th>Why it is here</th>
       </tr></thead>
       <tbody id="rows"></tbody>
     </table>
@@ -46,15 +56,22 @@
 <script src="data/objects-asteroids.js"></script>
 <script src="data/objects-comets.js"></script>
 <script src="data/objects-tnos.js"></script>
+<script src="data/objects-moons-jupiter2.js"></script>
+<script src="data/objects-moons-saturn2.js"></script>
+<script src="data/objects-moons-un2.js"></script>
+<script src="data/objects-small2.js"></script>
+<script src="data/objects-tnos2.js"></script>
+<script src="data/objects-hypothesis.js"></script>
 <script src="data/objects.js"></script>
 <script src="data/sensors.js"></script>
 <script src="data/buses.js"></script>
 <script src="assets/core.js"></script>
+<script src="assets/art.js"></script>
 <script>
 VSS.mountChrome("targets.html");
 (function () {
   var objs = window.VSS_OBJECTS || [];
-  var state = { q: "", cls: "", tier: "", sortK: null, sortDir: 1 };
+  var state = { q: "", cls: "", tier: "", groupBy: "group", showSurvey: true, sortK: null, sortDir: 1, closed: {} };
 
   function distOf(o) {
     var ho = VSS.helioOrbitOf(o);
@@ -87,7 +104,6 @@ VSS.mountChrome("targets.html");
     });
   }
 
-  // tier filter
   var tSel = document.getElementById("f-tier");
   Object.keys(VSS.TIERS).forEach(function (t) {
     var op = document.createElement("option");
@@ -96,10 +112,20 @@ VSS.mountChrome("targets.html");
   });
   tSel.addEventListener("change", function () { state.tier = tSel.value; render(); });
 
+  var st = document.getElementById("survey-toggle");
+  st.addEventListener("click", function () {
+    state.showSurvey = !state.showSurvey;
+    st.setAttribute("aria-pressed", String(state.showSurvey));
+    st.textContent = state.showSurvey ? "Census entries shown" : "Funded 200 only";
+    render();
+  });
+
   document.getElementById("q").addEventListener("input", function (e) {
     state.q = e.target.value.toLowerCase(); render();
   });
-
+  document.getElementById("groupby").addEventListener("change", function (e) {
+    state.groupBy = e.target.value; state.closed = {}; render();
+  });
   document.querySelectorAll("th.sortable").forEach(function (th) {
     th.addEventListener("click", function () {
       var k = th.dataset.k;
@@ -111,11 +137,32 @@ VSS.mountChrome("targets.html");
   function keyOf(o, k) {
     if (k === "dist") return o._dist;
     if (k === "sats") return o._sats;
+    if (k === "env") return o.env;
     return o[k];
+  }
+  function groupLabel(o) {
+    if (state.groupBy === "cls") return VSS.CLS_LABEL[o.cls] || o.cls;
+    if (state.groupBy === "tier") return VSS.TIERS[o.tier].label;
+    if (state.groupBy === "env") return VSS.ENV_LABEL[o.env] || o.env;
+    return o.group;
+  }
+
+  function rowHtml(o) {
+    return '<tr>' +
+      '<td class="thumb-cell"><canvas class="thumb" width="42" height="42" data-obj="' + o.id + '"></canvas></td>' +
+      '<td><a href="object.html?id=' + o.id + '">' + o.name + "</a></td>" +
+      "<td>" + (VSS.CLS_LABEL[o.cls] || o.cls) + "</td>" +
+      '<td class="num">' + (o._dist ? VSS.fmt(o._dist, o._dist < 10 ? 2 : 1) : "·") + "</td>" +
+      '<td class="num">' + VSS.fmt(o.radiusKm, o.radiusKm < 10 ? 1 : 0) + "</td>" +
+      '<td><span class="badge t-' + o.tier + '">' + VSS.TIERS[o.tier].label + "</span></td>" +
+      '<td class="num">' + (o._sats || "host swarm") + "</td>" +
+      '<td class="wrap dim small">' + (o.why || "") + "</td>" +
+      "</tr>";
   }
 
   function render() {
     var rows = objs.filter(function (o) {
+      if (!state.showSurvey && o.tier === "survey") return false;
       if (state.cls && o.cls !== state.cls) return false;
       if (state.tier && o.tier !== state.tier) return false;
       if (state.q) {
@@ -132,19 +179,35 @@ VSS.mountChrome("targets.html");
       });
     }
     var tb = document.getElementById("rows");
-    tb.innerHTML = rows.map(function (o) {
-      return "<tr>" +
-        '<td><a href="object.html?id=' + o.id + '">' + o.name + "</a></td>" +
-        "<td>" + (VSS.CLS_LABEL[o.cls] || o.cls) + "</td>" +
-        "<td>" + o.group + "</td>" +
-        '<td class="num">' + (o._dist ? VSS.fmt(o._dist, o._dist < 10 ? 2 : 1) : "·") + "</td>" +
-        '<td class="num">' + VSS.fmt(o.radiusKm, o.radiusKm < 10 ? 1 : 0) + "</td>" +
-        '<td><span class="badge t-' + o.tier + '">' + VSS.TIERS[o.tier].label + "</span></td>" +
-        '<td class="num">' + o._sats + "</td>" +
-        '<td class="wrap dim small">' + (o.why || "") + "</td>" +
-        "</tr>";
-    }).join("");
-    document.getElementById("count-note").textContent = rows.length + " of " + objs.length + " targets";
+    if (!state.groupBy) {
+      tb.innerHTML = rows.map(rowHtml).join("");
+    } else {
+      var seen = [], byG = {};
+      rows.forEach(function (o) {
+        var g = groupLabel(o);
+        if (!byG[g]) { byG[g] = []; seen.push(g); }
+        byG[g].push(o);
+      });
+      tb.innerHTML = seen.map(function (g) {
+        var list = byG[g];
+        var funded = list.filter(function (o) { return o.tier !== "survey"; }).length;
+        var closed = state.closed[g];
+        return '<tr class="group-row" data-g="' + g.replace(/"/g, "&quot;") + '"><td colspan="8">' +
+          (closed ? "▸ " : "▾ ") + g + ' <span class="faint">· ' + list.length + (list.length === 1 ? " body" : " bodies") + ", " + funded + " funded</span></td></tr>" +
+          (closed ? "" : list.map(rowHtml).join(""));
+      }).join("");
+      tb.querySelectorAll(".group-row").forEach(function (tr) {
+        tr.addEventListener("click", function () {
+          var g = tr.dataset.g;
+          state.closed[g] = !state.closed[g];
+          render();
+        });
+      });
+    }
+    var funded = rows.filter(function (o) { return o.tier !== "survey"; }).length;
+    document.getElementById("count-note").textContent =
+      rows.length + " of " + objs.length + " bodies shown (" + funded + " funded)";
+    window.VSS_ART.autoPaint(tb);
   }
   render();
 })();

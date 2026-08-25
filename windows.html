@@ -43,7 +43,7 @@
   </div>
 
   <h2>Campaign board: every target's next door</h2>
-  <p class="dim small">The whole catalogue sorted by who is reachable soonest, at the extra push currently on the dial. This is what a deployment queue would actually look like: the solar system sets the schedule, the engine budget bends it.</p>
+  <p class="dim small">Every funded target sorted by who is reachable soonest, at the extra push currently on the dial (census entries ride their host system's convoy). This is what a deployment queue would actually look like: the solar system sets the schedule, the engine budget bends it.</p>
   <div class="table-wrap">
     <table><thead><tr><th>Target</th><th>Next window</th><th class="num">Cruise</th><th class="num">Push (km/s)</th><th>Window rhythm</th></tr></thead>
     <tbody id="camp-rows"></tbody></table>
@@ -57,6 +57,12 @@
 <script src="data/objects-asteroids.js"></script>
 <script src="data/objects-comets.js"></script>
 <script src="data/objects-tnos.js"></script>
+<script src="data/objects-moons-jupiter2.js"></script>
+<script src="data/objects-moons-saturn2.js"></script>
+<script src="data/objects-moons-un2.js"></script>
+<script src="data/objects-small2.js"></script>
+<script src="data/objects-tnos2.js"></script>
+<script src="data/objects-hypothesis.js"></script>
 <script src="data/objects.js"></script>
 <script src="data/sensors.js"></script>
 <script src="data/buses.js"></script>
@@ -184,7 +190,7 @@ VSS.mountChrome("windows.html");
 
   function rebuildCampaign() {
     var extra = extraKms();
-    var rows = all.map(function (o) {
+    var rows = all.filter(function (o) { return o.tier !== "survey"; }).map(function (o) {
       var m = modelFor(o, extra);
       return { o: o, next: m.wins[0] || null, m: m };
     }).filter(function (r) { return r.next && r.next.getFullYear() < 2200; });

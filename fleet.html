@@ -12,7 +12,7 @@
 <header id="site-header"></header>
 <main>
   <h1>The fleet</h1>
-  <p class="lede">Five tiers of attention, from a hundred satellites wrapped around the Sun down to a pair of interceptors waiting for the next interstellar visitor. Drag the dials and watch the whole fleet re-total. The source design sketches 1,500 to 2,000 spacecraft; the defaults here build about 1,300, and the dials show what it costs to close that gap.</p>
+  <p class="lede">Six tiers of attention, from a hundred satellites wrapped around the Sun down to the census entries that carry none of their own. Drag the dials and watch the whole fleet re-total. The source design sketches 1,500 to 2,000 spacecraft; the defaults here build about 1,300. Slide the survey dial off zero and watch what promoting the whole census would cost.</p>
 
   <h2>Tier dials</h2>
   <div class="grid cols-3" id="dials"></div>
@@ -37,6 +37,12 @@
 <script src="data/objects-asteroids.js"></script>
 <script src="data/objects-comets.js"></script>
 <script src="data/objects-tnos.js"></script>
+<script src="data/objects-moons-jupiter2.js"></script>
+<script src="data/objects-moons-saturn2.js"></script>
+<script src="data/objects-moons-un2.js"></script>
+<script src="data/objects-small2.js"></script>
+<script src="data/objects-tnos2.js"></script>
+<script src="data/objects-hypothesis.js"></script>
 <script src="data/objects.js"></script>
 <script src="data/sensors.js"></script>
 <script src="data/buses.js"></script>
@@ -46,7 +52,7 @@ VSS.mountChrome("fleet.html");
 (function () {
   var sizes = {};
   Object.keys(VSS.TIERS).forEach(function (t) { sizes[t] = VSS.TIERS[t].n; });
-  var ranges = { observatory: [20, 150], swarm: [10, 80], enhanced: [4, 30], picket: [2, 12], intercept: [0, 6] };
+  var ranges = { observatory: [20, 150], swarm: [10, 80], enhanced: [4, 30], picket: [2, 12], intercept: [0, 6], survey: [0, 4] };
 
   function satCost(o) {
     var kit = window.VSS_KITS[window.VSS_KIT_OF(o)] || [];

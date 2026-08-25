@@ -3,7 +3,7 @@
 (function () {
   "use strict";
   var P = window.VSS_PARTS || {};
-  var order = ["core", "moons", "asteroids", "comets", "tnos"];
+  var order = ["core", "moons", "moonsJ2", "moonsS2", "moonsUN2", "asteroids", "small2", "comets", "tnos", "tnos2", "hypothesis"];
   var all = [];
   order.forEach(function (k) { if (P[k]) all = all.concat(P[k]); });
 

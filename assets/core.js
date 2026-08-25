@@ -4,14 +4,16 @@
 
   var NAV = [
     ["index.html", "Home"],
-    ["targets.html", "The 200"],
+    ["targets.html", "Catalogue"],
     ["map.html", "Orbit map"],
     ["gravity.html", "Gravity lab"],
     ["orbit-lab.html", "Orbit lab"],
-    ["windows.html", "Launch windows"],
-    ["builder.html", "Satellite builder"],
-    ["rides.html", "The rides"],
+    ["windows.html", "Windows"],
+    ["convoys.html", "Convoys"],
+    ["builder.html", "Builder"],
+    ["rides.html", "Rides"],
     ["sensors.html", "Instruments"],
+    ["network.html", "Network"],
     ["fleet.html", "Fleet"],
     ["cadence.html", "Cadence"],
     ["about.html", "About"]
@@ -22,7 +24,8 @@
     swarm:       { label: "Priority swarm",    n: 50,  cssVar: "--tier-swarm" },
     enhanced:    { label: "Enhanced picket",   n: 12,  cssVar: "--tier-enh" },
     picket:      { label: "Baseline picket",   n: 4,   cssVar: "--tier-picket" },
-    intercept:   { label: "Interceptor pair",  n: 2,   cssVar: "--tier-int" }
+    intercept:   { label: "Interceptor pair",  n: 2,   cssVar: "--tier-int" },
+    survey:      { label: "Survey entry",      n: 0,   cssVar: "--tier-survey" }
   };
 
   /* Design life in years by environment class. Radiation is the killer at
@@ -43,7 +46,7 @@
   var CLS_LABEL = {
     star: "Star", planet: "Planet", dwarf: "Dwarf planet", moon: "Moon",
     asteroid: "Asteroid", comet: "Comet", centaur: "Centaur", tno: "Trans-Neptunian object",
-    interstellar: "Interstellar visitor"
+    interstellar: "Interstellar visitor", hypothesis: "Hypothesis, unconfirmed"
   };
 
   var AUD_PER_USD = 1.55; // indicative conversion, August 2026

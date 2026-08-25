@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="en-AU">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Network : Virtual Solar Swarm</title>
+<meta name="description" content="Data relays, light lag and control systems: live light-time to every system, conjunction routing, trunk capacity and the four-rung control ladder.">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🛰️</text></svg>">
+<link rel="stylesheet" href="assets/style.css">
+</head>
+<body>
+<header id="site-header"></header>
+<main>
+  <h1>Network</h1>
+  <p class="lede">There is no joystick for a fleet like this. Light itself takes minutes to Mars and hours to Neptune, so control must live where the action is, and the data must find its own way home. This page computes today's real light lags, watches for the Sun blocking the line, and lays out who decides what.</p>
+
+  <h2>Light lag, live</h2>
+  <p class="dim small">Distances computed for today's actual planet positions. The verdict column says what kind of control the lag allows; everything slower than conversation runs on the autonomy ladder below.</p>
+  <div class="table-wrap">
+    <table><thead><tr>
+      <th>System</th><th class="num">Distance now</th><th class="num">One-way light time</th><th class="num">Round trip</th>
+      <th>Sun in the way?</th><th>Control verdict</th>
+    </tr></thead><tbody id="lag-rows"></tbody></table>
+  </div>
+  <p class="faint" id="conj-note"></p>
+
+  <h2>The data road home</h2>
+  <p class="dim small">Laser trunk links thin with the square of distance, the same as sunlight. Each system's swarm makes far more data than the trunk can carry, which is why the edge AI sends only the interesting tenth and the mesh queues the rest.</p>
+  <div class="table-wrap">
+    <table><thead><tr>
+      <th>System</th><th class="num">Satellites</th><th class="num">Data made / day</th><th class="num">Trunk capacity / day</th><th>Flow</th>
+    </tr></thead><tbody id="data-rows"></tbody></table>
+  </div>
+  <p class="dim small" id="data-total"></p>
+
+  <h2>The control ladder</h2>
+  <div class="grid cols-4">
+    <div class="card"><h3>1 · Reflex</h3><p class="dim small">Milliseconds, onboard. The satellite's own edge AI dodges debris, points instruments at a sudden plume, keeps itself alive. Nobody is asked.</p></div>
+    <div class="card"><h3>2 · Swarm vote</h3><p class="dim small">Seconds to minutes, over the local radio mesh. The picket votes on a new formation or a chase, the way the flown Starling swarm demonstrated. Consensus, not command.</p></div>
+    <div class="card"><h3>3 · System plan</h3><p class="dim small">Hours, at the system relay hub. Weekly observing plans, convoy arrivals, cross-picket coordination for a whole planetary system.</p></div>
+    <div class="card"><h3>4 · Policy</h3><p class="dim small">Days, from Earth. Humans set priorities and budgets, never joystick a spacecraft. Commands travel signed, with keys exchanged on the tamper-proof quantum channel.</p></div>
+  </div>
+
+  <h2>The relay architecture</h2>
+  <div class="grid cols-2">
+    <div class="card"><h3>Trunk and side doors</h3>
+      <p class="dim small">The main road is laser: tight beams from each system hub to Earth's receiving telescopes, the technology the DSOC experiment proved across hundreds of millions of kilometres. But once each synodic year most systems pass behind the Sun, and the beam is blown out by our own star. The fix is geometry: relay stations riding 60° ahead of and behind Earth, on the same L4 and L5 ledges you can stand on in the <a href="gravity.html">gravity lab</a>, so there is always a bent path around the glare. The conjunction column above shows who needs the side door today.</p></div>
+    <div class="card"><h3>Store and forward</h3>
+      <p class="dim small">When no path is open at all, nothing is lost. Every satellite and hub holds its mail and passes it on when a link returns: delay-tolerant networking, the interplanetary internet model proven on the space station. Retired convoy tugs take up posts as extra letterboxes. The network is slower than Earth's, never broken.</p></div>
+  </div>
+</main>
+<footer id="site-footer"></footer>
+<script src="assets/astro.js"></script>
+<script src="data/objects-core.js"></script>
+<script src="data/objects-moons.js"></script>
+<script src="data/objects-asteroids.js"></script>
+<script src="data/objects-comets.js"></script>
+<script src="data/objects-tnos.js"></script>
+<script src="data/objects-moons-jupiter2.js"></script>
+<script src="data/objects-moons-saturn2.js"></script>
+<script src="data/objects-moons-un2.js"></script>
+<script src="data/objects-small2.js"></script>
+<script src="data/objects-tnos2.js"></script>
+<script src="data/objects-hypothesis.js"></script>
+<script src="data/objects.js"></script>
+<script src="data/sensors.js"></script>
+<script src="data/buses.js"></script>
+<script src="assets/core.js"></script>
+<script>
+VSS.mountChrome("network.html");
+(function () {
+  var A = window.ASTRO;
+  var byId = window.VSS_BY_ID;
+  var C_KMS = 299792.458;
+  var t = A.daysSinceJ2000(new Date());
+  var pe = A.helioPos(byId.earth.orbit, t);
+
+  var systems = [
+    { id: "sun", label: "Helios (the Sun)" },
+    { id: "mercury", label: "Mercury" },
+    { id: "venus", label: "Venus" },
+    { id: "moon", label: "Earth and Moon", home: true },
+    { id: "mars", label: "Mars system" },
+    { id: "ceres", label: "Main belt (via Ceres hub)" },
+    { id: "jupiter", label: "Jupiter system" },
+    { id: "saturn", label: "Saturn system" },
+    { id: "uranus", label: "Uranus system" },
+    { id: "neptune", label: "Neptune system" },
+    { id: "pluto", label: "Pluto system" },
+    { id: "sedna", label: "Deep survey (Sedna reach)" }
+  ];
+
+  function satsOfSystem(repId) {
+    if (repId === "sun") return VSS.tierCount(byId.sun);
+    if (repId === "moon") return VSS.tierCount(byId.earth) + VSS.tierCount(byId.moon);
+    if (repId === "ceres") {
+      return window.VSS_OBJECTS.filter(function (o) { return o.group === "Main belt"; })
+        .reduce(function (a, o) { return a + VSS.tierCount(o); }, 0);
+    }
+    if (repId === "sedna") {
+      return window.VSS_OBJECTS.filter(function (o) { return o.group === "Trans-Neptunian objects" || o.group === "Dwarf planets"; })
+        .reduce(function (a, o) { return a + VSS.tierCount(o); }, 0) - VSS.tierCount(byId.pluto);
+    }
+    var rep = byId[repId];
+    var kids = window.VSS_OBJECTS.filter(function (o) { return o.parent === repId; });
+    return VSS.tierCount(rep) + kids.reduce(function (a, o) { return a + VSS.tierCount(o); }, 0);
+  }
+
+  var lagRows = "", dataRows = "", conj = [], totalTB = 0;
+  systems.forEach(function (s) {
+    var distKm, elongDeg = null;
+    if (s.id === "sun") { distKm = 1.0 * A.AU_KM; }
+    else if (s.home) { distKm = 384400; }
+    else {
+      var o = byId[s.id];
+      var p = A.helioPos(o.orbit, t);
+      var dx = p.x - pe.x, dy = p.y - pe.y, dz = p.z - pe.z;
+      var dAU = Math.sqrt(dx * dx + dy * dy + dz * dz);
+      distKm = dAU * A.AU_KM;
+      // angle at Earth between the Sun and the target
+      var rE = Math.sqrt(pe.x * pe.x + pe.y * pe.y + pe.z * pe.z);
+      var dot = (-pe.x) * dx + (-pe.y) * dy + (-pe.z) * dz;
+      elongDeg = Math.acos(Math.min(1, Math.max(-1, dot / (rE * dAU)))) * 180 / Math.PI;
+    }
+    var oneWayS = distKm / C_KMS;
+    var lagTxt = oneWayS < 5 ? VSS.fmt(oneWayS, 1) + " s"
+      : oneWayS < 3600 ? VSS.fmt(oneWayS / 60, 1) + " min"
+      : VSS.fmt(oneWayS / 3600, 1) + " h";
+    var rtTxt = oneWayS * 2 < 5 ? VSS.fmt(oneWayS * 2, 1) + " s"
+      : oneWayS * 2 < 3600 ? VSS.fmt(oneWayS / 30, 1) + " min"
+      : VSS.fmt(oneWayS / 1800, 1) + " h";
+    var sunBlock = elongDeg !== null && elongDeg < 10 && s.id !== "sun";
+    if (sunBlock) conj.push(s.label);
+    var verdict = oneWayS < 2 ? '<span class="verdict ok">live control possible</span>'
+      : oneWayS < 600 ? '<span class="verdict warn">teleoperate slowly; reflexes local</span>'
+      : '<span class="verdict bad">autonomy only; Earth sets policy</span>';
+    lagRows += "<tr><td>" + s.label + "</td><td class='num'>" + (distKm >= 1e6 ? VSS.fmt(distKm / A.AU_KM, 2) + " AU" : VSS.fmt(distKm) + " km") + "</td>" +
+      "<td class='num'>" + lagTxt + "</td><td class='num'>" + rtTxt + "</td>" +
+      "<td>" + (s.id === "sun" ? "is the Sun" : sunBlock ? '<span class="verdict warn">yes, via side relay</span>' : "clear") + "</td>" +
+      "<td>" + verdict + "</td></tr>";
+
+    var sats = satsOfSystem(s.id);
+    var dAUeff = Math.max(distKm / A.AU_KM, 0.3);
+    var trunkMbps = Math.min(2000, 2000 / (dAUeff * dAUeff));
+    var madeTB = sats * 30 * 86400 / 8 / 1e6;   // 30 Mbps of keeper-data per satellite
+    var trunkTB = trunkMbps * 86400 / 8 / 1e6;
+    totalTB += Math.min(madeTB, trunkTB);
+    dataRows += "<tr><td>" + s.label + "</td><td class='num'>" + VSS.fmt(sats) + "</td>" +
+      "<td class='num'>" + VSS.fmt(madeTB, 1) + " TB</td><td class='num'>" + VSS.fmt(trunkTB, 1) + " TB</td>" +
+      "<td>" + (madeTB <= trunkTB ? '<span class="verdict ok">flows live</span>' : '<span class="verdict warn">queues in the mesh</span>') + "</td></tr>";
+  });
+
+  document.getElementById("lag-rows").innerHTML = lagRows;
+  document.getElementById("data-rows").innerHTML = dataRows;
+  document.getElementById("conj-note").textContent = conj.length
+    ? "Near conjunction today: " + conj.join(", ") + ". Their traffic bends around the Sun through the L4 or L5 side relay."
+    : "No system is behind the Sun today; every trunk runs direct.";
+  document.getElementById("data-total").textContent =
+    "Delivered to Earth at today's geometry: about " + VSS.fmt(totalTB, 0) + " terabytes a day, roughly a shelf of " + VSS.fmt(totalTB / 2, 0) + " laptop drives, every day, forever.";
+})();
+</script>
+</body>
+</html>

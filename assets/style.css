@@ -17,6 +17,7 @@
   --tier-enh: #a78bfa;
   --tier-picket: #7e8ca6;
   --tier-int: #fb7185;
+  --tier-survey: #6fa287;
   --radius: 10px;
   --max: 1180px;
 }
@@ -25,7 +26,20 @@
 html { scroll-behavior: smooth; }
 body {
   background: var(--bg);
-  background-image: radial-gradient(ellipse 80% 50% at 50% -10%, #101d3a 0%, transparent 60%);
+  background-image:
+    radial-gradient(1px 1px at 12% 22%, rgba(220,229,245,.5), transparent),
+    radial-gradient(1px 1px at 34% 74%, rgba(220,229,245,.34), transparent),
+    radial-gradient(1px 1px at 58% 12%, rgba(220,229,245,.42), transparent),
+    radial-gradient(1px 1px at 71% 58%, rgba(220,229,245,.3), transparent),
+    radial-gradient(1px 1px at 88% 32%, rgba(220,229,245,.45), transparent),
+    radial-gradient(1px 1px at 22% 92%, rgba(220,229,245,.3), transparent),
+    radial-gradient(1.5px 1.5px at 45% 45%, rgba(76,201,240,.35), transparent),
+    radial-gradient(1.5px 1.5px at 93% 81%, rgba(240,180,41,.3), transparent),
+    radial-gradient(ellipse 70% 42% at 78% -8%, rgba(90,60,150,.22) 0%, transparent 60%),
+    radial-gradient(ellipse 80% 50% at 50% -10%, #101d3a 0%, transparent 60%),
+    radial-gradient(ellipse 55% 60% at -8% 68%, rgba(20,60,90,.28) 0%, transparent 60%);
+  background-size: 520px 520px, 610px 610px, 470px 470px, 690px 690px, 550px 550px, 730px 730px,
+    900px 900px, 1100px 1100px, 100% 100%, 100% 100%, 100% 100%;
   color: var(--ink);
   font: 16px/1.65 system-ui, "Segoe UI", Roboto, sans-serif;
   min-height: 100vh;
@@ -106,6 +120,27 @@ p + p { margin-top: .7rem; }
 .badge.t-enhanced { color: var(--tier-enh); }
 .badge.t-picket { color: var(--tier-picket); }
 .badge.t-intercept { color: var(--tier-int); }
+.badge.t-survey { color: var(--tier-survey); }
+
+/* ---------- portraits ---------- */
+.thumb { width: 42px; height: 42px; vertical-align: middle; border-radius: 50%; }
+td.thumb-cell { padding: .25rem .4rem .25rem .8rem; width: 50px; }
+.portrait-hero {
+  float: right; margin: 0 0 1rem 1.5rem; text-align: center;
+}
+.portrait-hero canvas {
+  width: min(300px, 38vw); height: auto;
+  filter: drop-shadow(0 0 24px rgba(76, 201, 240, .12));
+}
+.portrait-hero .faint { margin-top: .2rem; }
+.hero-band { margin: 1.4rem 0 .4rem; }
+.hero-band canvas { width: 100%; height: auto; display: block; border-radius: var(--radius); }
+tr.group-row td {
+  background: var(--bg-raise); color: var(--accent); font-weight: 600;
+  letter-spacing: .04em; font-size: .85rem; cursor: pointer; user-select: none;
+}
+tr.group-row td:hover { color: var(--ink); }
+@media (max-width: 640px) { .portrait-hero { float: none; margin: 0 auto 1rem; } }
 .dot { display: inline-block; width: .6em; height: .6em; border-radius: 50%; margin-right: .35em; }
 
 /* ---------- tables ---------- */

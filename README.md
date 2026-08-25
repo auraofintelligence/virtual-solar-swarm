@@ -2,7 +2,7 @@
 
 🤝🔷 **A Luke × Claude build.** Created by Luke Nathan Hayes ([auraofintelligence](https://github.com/auraofintelligence)) and Claude (Fable 5) on 25 August 2026. Not a Codex build.
 
-An interactive, fully static website for designing a solar-system-wide satellite swarm: the 200 most interesting objects in the solar system, their real orbits, stable orbits around each of them, launch windows to get there, modular sensor packages, satellite builds, fleet allocation and replacement cadence.
+An interactive, fully static website for designing a solar-system-wide satellite swarm: 384 catalogued bodies (the 200 funded targets plus a census of every named moon of the giant planets), real orbits, stable orbits, launch windows with an interactive delta-v dial, a live Lagrange-point gravity lab, modular sensor packages, propulsion, satellite builds, ride-share convoys with renewal planning, a data-relay and control-systems network model, fleet allocation and replacement cadence. Every body wears a portrait drawn by code from its real properties; nothing on the site is a photograph.
 
 **Live site:** https://auraofintelligence.github.io/virtual-solar-swarm/
 
@@ -17,6 +17,8 @@ An interactive, fully static website for designing a solar-system-wide satellite
 | `gravity.html` | The restricted three-body problem live: Lagrange points, tadpole and horseshoe orbits, playable insertions |
 | `orbit-lab.html` | Stable orbit designer (Hill spheres, safe floors, stable ceilings) |
 | `windows.html` | Interactive launch windows: dial in extra delta-v and the whole timetable bends |
+| `convoys.html` | Ride-share batch missions and renewal convoys on every window |
+| `network.html` | Live light lag, conjunction routing, trunk capacity and the control ladder |
 | `builder.html` | Satellite builder with mass, power, data, delta-v and cost budgets |
 | `rides.html` | Launch stages and cruise engines (ion, Neumann Drive, nuclear, sail) with a rocket-equation calculator |
 | `sensors.html` | The fifteen-module instrument kit of parts |
