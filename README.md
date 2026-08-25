@@ -13,10 +13,12 @@ An interactive, fully static website for designing a solar-system-wide satellite
 | `index.html` | The idea, the numbers, and how the tools chain together |
 | `targets.html` | The full 200-object catalogue, searchable and sortable |
 | `object.html?id=` | Per-target dossier: orbit, stable orbits, windows, fit-out, cadence |
-| `map.html` | Animated heliocentric map driven by real orbital elements |
+| `map.html` | Animated 3D heliocentric map driven by real orbital elements; drag to tilt and spin |
+| `gravity.html` | The restricted three-body problem live: Lagrange points, tadpole and horseshoe orbits, playable insertions |
 | `orbit-lab.html` | Stable orbit designer (Hill spheres, safe floors, stable ceilings) |
-| `windows.html` | Launch window model plus a whole-catalogue campaign board |
-| `builder.html` | Satellite builder with mass, power, data and cost budgets |
+| `windows.html` | Interactive launch windows: dial in extra delta-v and the whole timetable bends |
+| `builder.html` | Satellite builder with mass, power, data, delta-v and cost budgets |
+| `rides.html` | Launch stages and cruise engines (ion, Neumann Drive, nuclear, sail) with a rocket-equation calculator |
 | `sensors.html` | The fifteen-module instrument kit of parts |
 | `fleet.html` | Fleet allocation with adjustable tier dials |
 | `cadence.html` | Replacement drumbeat and factory-pace model |
@@ -24,7 +26,7 @@ An interactive, fully static website for designing a solar-system-wide satellite
 
 ## How it works
 
-No build step, no frameworks, no external requests. Plain HTML, CSS and JavaScript; the physics engine is `assets/astro.js` (teaching-grade two-body mechanics: Kepler propagation, Hohmann transfers, synodic windows, Hill spheres, orbit insertion). The catalogue lives in `data/objects-*.js` as five reviewable data files that merge to exactly 200 objects.
+No build step, no frameworks, no external requests. Plain HTML, CSS and JavaScript; the physics engine is `assets/astro.js` (teaching-grade mechanics: Kepler propagation, Hohmann and faster tangential-burn transfers including hyperbolic, synodic windows, Hill spheres, orbit insertion, and the planar circular restricted three-body problem with a numerically solved Lagrange landscape and RK4 integration). The catalogue lives in `data/objects-*.js` as five reviewable data files that merge to exactly 200 objects; buses, instruments and propulsion live beside them.
 
 Run it locally with any static server, for example:
 
