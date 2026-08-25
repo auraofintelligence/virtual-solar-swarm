@@ -28,7 +28,27 @@ window.VSS_ROT = {
     jupiter: 0.014736, saturn: 0.016298, uranus: 0.0033434, neptune: 0.0034110,
     moon: 2.033e-4, ceres: 0.0262, vesta: 0.0717
   },
-  chaotic: { hyperion: true }
+  chaotic: { hyperion: true },
+  /* axial tilt against the body's own orbit plane, degrees; past 90 means
+     it spins backwards relative to its travel */
+  obliquityDeg: {
+    mercury: 0.03, venus: 177.4, earth: 23.44, mars: 25.19,
+    jupiter: 3.13, saturn: 26.73, uranus: 97.77, neptune: 28.32,
+    pluto: 122.53, ceres: 4.0, vesta: 29.0, moon: 6.7,
+    bennu: 177.9, ryugu: 171.6, haumea: 126.0
+  },
+  /* magnetic dipole tilt from the spin axis, degrees, where a global field
+     has actually been measured */
+  magTiltDeg: {
+    mercury: 0.6, earth: 11.0, jupiter: 10.3, saturn: 0.0,
+    uranus: 58.6, neptune: 46.9, ganymede: 4.0
+  },
+  /* bodies checked and found without a global field today */
+  noField: {
+    venus: "no global magnetic field found",
+    moon: "no global field; crustal wisps only",
+    mars: "no global field today; magnetised crustal patches only"
+  }
 };
 
 /* Rotation seconds for any body, honouring tidal locking: regular moons

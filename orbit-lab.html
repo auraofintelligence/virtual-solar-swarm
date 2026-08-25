@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Orbit lab : Virtual Solar Swarm</title>
-<meta name="description" content="Design orbits around any of 384 bodies in 3D: radius and inclination in your hands, stationary and sun-synchronous orbits computed from each body's real spin and shape.">
+<meta name="description" content="Design orbits around any of 384 bodies in 3D, oriented to the real solar system: simple circular mode or advanced Keplerian mode with eccentricity, nodes and J2 precession.">
 <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🛰️</text></svg>">
 <link rel="stylesheet" href="assets/style.css">
 </head>
@@ -12,11 +12,17 @@
 <header id="site-header"></header>
 <main>
   <h1>Orbit lab</h1>
-  <p class="lede">Every body owns a bubble of space where its gravity is in charge, and inside the bubble its own spin and shape carve out special orbits: hang-still-overhead orbits set by the day's length, pole-crossing orbits that drift with the seasons, and floors and ceilings set by gravity itself. Pick a body, take the radius and tilt in your hands, and watch it run in 3D.</p>
+  <p class="lede">Every body owns a bubble of space where its gravity is in charge, and inside it the body's own spin, shape and tilt carve out the special orbits. The scene is oriented to the real solar system: the sunward arrow points where the Sun is today, the orbit plane rides at the body's true tilt, and the poles, and magnetic axis where one is measured, are drawn and named. Simple mode keeps orbits circular; advanced mode hands you true orbital mechanics.</p>
 
   <div class="controls">
-    <label>Target
-      <select id="target"></select>
+    <label>Target <select id="target"></select></label>
+    <button id="m-simple" aria-pressed="true">Simple</button>
+    <button id="m-adv" aria-pressed="false">Advanced</button>
+    <label>Scale
+      <select id="scalemode">
+        <option value="log" selected>compressed</option>
+        <option value="lin">true to the body</option>
+      </select>
     </label>
     <label>Sim speed
       <select id="simspeed">
@@ -26,32 +32,43 @@
         <option value="86400">a day a second</option>
       </select>
     </label>
-    <span id="preset-row">
-      <button data-p="low">Low mapping</button>
-      <button data-p="mid">Picket station</button>
-      <button data-p="dro">Distant retrograde</button>
-      <button data-p="sync" id="btn-sync">Stationary</button>
-      <button data-p="ss" id="btn-ss">Sun-synchronous</button>
-    </span>
+  </div>
+  <div class="chip-row" id="preset-row">
+    <button class="chip" data-p="low">Low mapping</button>
+    <button class="chip" data-p="mid">Picket station</button>
+    <button class="chip" data-p="dro">Distant retrograde</button>
+    <button class="chip" data-p="sync" id="btn-sync">Stationary</button>
+    <button class="chip" data-p="ss" id="btn-ss">Sun-synchronous</button>
+    <button class="chip" data-p="molniya" id="btn-mol">Molniya (advanced)</button>
   </div>
 
   <div id="special" class="callout" style="display:none"></div>
 
   <div class="grid cols-2" id="lab">
-    <div class="canvas-wrap"><canvas id="cv" width="560" height="620"></canvas><div class="canvas-hud" id="hud"></div></div>
+    <div>
+      <div class="canvas-wrap"><canvas id="cv" width="560" height="620"></canvas><div class="canvas-hud" id="hud"></div></div>
+      <div class="chip-row" style="margin-top:.5rem">
+        <span class="chip" style="cursor:default"><span class="dot" style="background:#ffd76a"></span>sunward today</span>
+        <span class="chip" style="cursor:default"><span class="dot" style="background:#4cc9f0"></span>your orbit</span>
+        <span class="chip" style="cursor:default"><span class="dot" style="background:#f0b429"></span>stationary ring</span>
+        <span class="chip" style="cursor:default"><span class="dot" style="background:#4ade80"></span>steady limit</span>
+        <span class="chip" style="cursor:default"><span class="dot" style="background:#fbbf24"></span>backwards limit</span>
+        <span class="chip" style="cursor:default"><span class="dot" style="background:#dce5f5"></span>spin axis N to S</span>
+        <span class="chip" style="cursor:default"><span class="dot" style="background:#fb7185"></span>magnetic axis</span>
+        <span class="chip" style="cursor:default"><span class="dot" style="background:#8c9bb8"></span>its orbit plane</span>
+      </div>
+    </div>
     <div>
       <div class="card">
         <h3>Your orbit</h3>
-        <p><label>Radius <input type="range" id="r" min="0" max="1000" value="300"></label></p>
-        <p><label>Tilt <input type="range" id="inc" min="0" max="180" value="20"></label> <strong id="inc-out">20°</strong> <span class="faint" id="inc-word"></span></p>
-        <dl class="kv">
-          <dt>Radius</dt><dd id="o-r">·</dd>
-          <dt>Altitude</dt><dd id="o-alt">·</dd>
-          <dt>Lap time</dt><dd id="o-t">·</dd>
-          <dt>Speed</dt><dd id="o-v">·</dd>
-          <dt>Sun-sync here</dt><dd id="o-ss">·</dd>
-          <dt>Verdict</dt><dd id="o-verdict">·</dd>
-        </dl>
+        <p><label><span id="r-label">Radius</span> <input type="range" id="r" min="0" max="1000" value="300"></label></p>
+        <p><label>Tilt <input type="range" id="inc" min="0" max="180" step="0.1" value="20"></label> <strong id="inc-out">20°</strong> <span class="faint" id="inc-word"></span></p>
+        <div id="adv-rows" style="display:none">
+          <p><label>Stretch (eccentricity) <input type="range" id="ecc" min="0" max="90" value="0"></label> <strong id="ecc-out">0.00</strong></p>
+          <p><label>Periapsis direction <input type="range" id="argp" min="0" max="360" value="270"></label> <strong id="argp-out">270°</strong></p>
+          <p><label>Node direction <input type="range" id="raan" min="0" max="360" value="0"></label> <strong id="raan-out">0°</strong></p>
+        </div>
+        <dl class="kv" id="readouts"></dl>
       </div>
       <div class="card" style="margin-top:1rem">
         <h3>The body's bubble</h3>
@@ -65,7 +82,7 @@
         <p class="faint" id="b-note"></p>
       </div>
       <div class="card" style="margin-top:1rem">
-        <h3>The clockwork orbits here</h3>
+        <h3>The body itself</h3>
         <dl class="kv" id="spec-rows"></dl>
         <p class="faint" id="spec-note"></p>
       </div>
@@ -90,10 +107,12 @@
 <script src="data/buses.js"></script>
 <script src="data/rotation.js"></script>
 <script src="assets/core.js"></script>
+<script src="assets/art.js"></script>
 <script>
 VSS.mountChrome("orbit-lab.html");
 (function () {
   var A = window.ASTRO;
+  var D2R = Math.PI / 180;
   var sel = document.getElementById("target");
   var objs = window.VSS_OBJECTS.filter(function (o) { return o.cls !== "star" && o.cls !== "interstellar" && o.cls !== "hypothesis"; });
 
@@ -108,15 +127,21 @@ VSS.mountChrome("orbit-lab.html");
     sel.appendChild(og);
   });
 
-  var cur, bands, gm, vinf, rot, rSync, j2, bodyYear, parent;
-  var slider = document.getElementById("r");
-  var incSlider = document.getElementById("inc");
+  var cur, bands, gm, vinf, rot, rSync, j2, bodyYear, parent, tint, obliq, magTilt, noField, sunAz;
+  var advanced = false, scaleMode = "log";
+  var slider = document.getElementById("r"), incS = document.getElementById("inc");
+  var eccS = document.getElementById("ecc"), argpS = document.getElementById("argp"), raanS = document.getElementById("raan");
   var cv = document.getElementById("cv"), ctx = cv.getContext("2d");
   var W = cv.width, H = cv.height, CX = W / 2, CY = H / 2;
 
-  // ---- 3D camera ----
+  // ---- camera ----
   var yaw = 0.7, camTilt = 0.5, zoom = 1;
+  function fitKm() {
+    var a = sliderToR(), e = advanced ? +eccS.value / 100 : 0;
+    return Math.max(a * (1 + e) * 1.25, cur.radiusKm * 3, bands.minKm * 2);
+  }
   function px(km) {
+    if (scaleMode === "lin") return km * (Math.min(CX, CY) - 14) / fitKm() * zoom;
     var maxR = bands.retrogradeMaxKm * 1.25;
     var sc = (Math.min(CX, CY) - 14) / Math.log10(1 + maxR);
     return Math.log10(1 + km) * sc * zoom;
@@ -125,17 +150,17 @@ VSS.mountChrome("orbit-lab.html");
     var cyw = Math.cos(yaw), syw = Math.sin(yaw);
     var x1 = x * cyw - y * syw, y1 = x * syw + y * cyw;
     var ct = Math.cos(camTilt), st = Math.sin(camTilt);
-    return { x: CX + x1, y: CY - (y1 * ct + z * st), depth: -y1 * st + z * ct };
+    return { x: CX + x1, y: CY - (y1 * ct + z * st) };
   }
-  /* place a point at true radius km, compress radially, project */
   function p3(km, ux, uy, uz) {
     var s = px(km);
     return project(ux * s, uy * s, uz * s);
   }
 
-  // ---- simulation state ----
-  var theta = 0, lambda = 0, simMult = 3600, trail = [];
+  // ---- state ----
+  var M = 0, lambda = 0, simMult = 3600, trail = [];
   document.getElementById("simspeed").addEventListener("change", function (e) { simMult = +e.target.value; });
+  document.getElementById("scalemode").addEventListener("change", function (e) { scaleMode = e.target.value; });
 
   function sliderToR() {
     var lo = Math.log(bands.minKm * 0.8), hi = Math.log(bands.retrogradeMaxKm * 1.2);
@@ -144,6 +169,29 @@ VSS.mountChrome("orbit-lab.html");
   function rToSlider(r) {
     var lo = Math.log(bands.minKm * 0.8), hi = Math.log(bands.retrogradeMaxKm * 1.2);
     return Math.max(0, Math.min(1000, Math.round(1000 * (Math.log(r) - lo) / (hi - lo))));
+  }
+  function elements() {
+    return {
+      a: sliderToR(),
+      e: advanced ? +eccS.value / 100 : 0,
+      i: +incS.value * D2R,
+      w: (advanced ? +argpS.value : 0) * D2R,
+      om: (advanced ? +raanS.value : 0) * D2R
+    };
+  }
+  /* full 3-1-3 rotation: in-plane point -> body frame */
+  function orbPoint(el, nu) {
+    var r = el.a * (1 - el.e * el.e) / (1 + el.e * Math.cos(nu));
+    var xo = r * Math.cos(nu + el.w), yo = r * Math.sin(nu + el.w);
+    var ci = Math.cos(el.i), si = Math.sin(el.i);
+    var x1 = xo, y1 = yo * ci, z1 = yo * si;
+    var co = Math.cos(el.om), so = Math.sin(el.om);
+    return { km: r, x: (x1 * co - y1 * so) / r, y: (x1 * so + y1 * co) / r, z: z1 / r };
+  }
+
+  function shade(f, alpha) {
+    var r = Math.max(0, Math.min(255, tint[0] + f)), g = Math.max(0, Math.min(255, tint[1] + f)), b = Math.max(0, Math.min(255, tint[2] + f));
+    return "rgba(" + r + "," + g + "," + b + "," + (alpha === undefined ? 1 : alpha) + ")";
   }
 
   function setTarget(id) {
@@ -162,18 +210,25 @@ VSS.mountChrome("orbit-lab.html");
     rot = window.VSS_ROT_OF(cur);
     rSync = (rot && rot.seconds) ? A.syncOrbitKm(gm, rot.seconds) : null;
     j2 = window.VSS_ROT.j2[cur.id];
-    trail = []; theta = 0; lambda = 0;
+    obliq = window.VSS_ROT.obliquityDeg[cur.id];
+    magTilt = window.VSS_ROT.magTiltDeg[cur.id];
+    noField = window.VSS_ROT.noField[cur.id];
+    tint = window.VSS_ART.tintOf(cur);
+    // today's sunward direction, from the body's actual heliocentric position
+    var pos = A.helioPos(ho, A.daysSinceJ2000(new Date()));
+    sunAz = Math.atan2(-pos.y, -pos.x);
+    trail = []; M = 0; lambda = 0;
 
     document.getElementById("b-hill").textContent = VSS.fmtKm(bands.hillKm);
     document.getElementById("b-min").textContent = VSS.fmtKm(bands.minKm) + " from centre";
     document.getElementById("b-pro").textContent = VSS.fmtKm(bands.progradeMaxKm);
     document.getElementById("b-retro").textContent = "stable out to " + VSS.fmtKm(bands.retrogradeMaxKm) + " if you orbit against the grain";
     document.getElementById("b-note").textContent =
-      "Rules of thumb: orbits the normal way round hold to about a third of the Hill sphere; backwards (retrograde) orbits hold to about a half. " +
+      "Rules of thumb: orbits the normal way round hold to about a third of the Hill sphere; backwards to about a half. " +
       (cur.massKg ? "" : "This body has never been weighed, so its gravity here is estimated from its size. ") +
-      (cur.env === "radiation" ? "Warning: this orbit sits inside Jupiter's radiation belts, the harshest place in the solar system for electronics." : "");
+      (cur.env === "radiation" ? "Warning: inside Jupiter's radiation belts, the harshest place out here for electronics." : "");
 
-    renderSpecials();
+    renderBodyCard();
     slider.value = rToSlider(Math.max(bands.minKm * 1.6, Math.min(bands.minKm * 3, bands.progradeMaxKm / 2)));
     update();
   }
@@ -181,31 +236,33 @@ VSS.mountChrome("orbit-lab.html");
   function spinWord() {
     if (!rot) return "spin unmeasured";
     if (rot.chaotic) return "tumbles chaotically instead of spinning cleanly";
-    if (rot.locked) return "tidally locked: spins once per lap of " + parent.name;
+    if (rot.locked) return "tidally locked: spins once per lap of " + parent.name + ", one face always toward it";
     var h = rot.seconds / 3600;
     var t = h < 48 ? VSS.fmt(h, 1) + " hours" : VSS.fmt(h / 24, 1) + " days";
     return "spins in about " + t + (rot.retrograde ? ", backwards" : "");
   }
 
-  function renderSpecials() {
+  function renderBodyCard() {
     var rows = "<dt>Its day</dt><dd>" + spinWord() + "</dd>";
-    var note = "";
+    rows += "<dt>Axial tilt</dt><dd>" + (obliq !== undefined
+      ? "tips " + VSS.fmt(obliq, 1) + "° against its orbit" + (obliq > 90 ? " (past 90: it rolls backwards)" : "")
+      : "unmeasured; the orbit-plane ring is drawn flat") + "</dd>";
+    rows += "<dt>Magnetic field</dt><dd>" + (magTilt !== undefined
+      ? "a global field, its axis leaning " + VSS.fmt(magTilt, 1) + "° off the spin axis"
+      : noField ? noField : "not measured") + "</dd>";
 
-    // stationary orbit, generalised geostationary
     if (rot && rot.locked) {
       rows += "<dt>Stationary orbit</dt><dd>its day equals its lap of " + parent.name +
-        ", so hanging still over one spot means sitting at the L1 or L2 ledge instead: see the <a href='gravity.html?id=" + cur.id + "'>gravity lab</a></dd>";
+        "; hanging still over one spot means the L1 or L2 ledge instead: see the <a href='gravity.html?id=" + cur.id + "'>gravity lab</a></dd>";
     } else if (rot && rot.chaotic) {
-      rows += "<dt>Stationary orbit</dt><dd>meaningless over a tumbling body; nothing hangs still above Hyperion</dd>";
+      rows += "<dt>Stationary orbit</dt><dd>meaningless over a tumbling body</dd>";
     } else if (!rSync) {
       rows += "<dt>Stationary orbit</dt><dd>needs a measured spin to quote one</dd>";
     } else {
       var ceiling = rot.retrograde ? bands.retrogradeMaxKm : bands.progradeMaxKm;
-      if (rSync < bands.minKm) {
-        rows += "<dt>Stationary orbit</dt><dd>would sit at " + VSS.fmtKm(rSync) + ", inside the safe floor: it spins too fast for one</dd>";
-      } else if (rSync > ceiling) {
-        rows += "<dt>Stationary orbit</dt><dd>would sit at " + VSS.fmtKm(rSync) + ", outside its bubble: it spins too slowly for one to hold</dd>";
-      } else {
+      if (rSync < bands.minKm) rows += "<dt>Stationary orbit</dt><dd>would sit at " + VSS.fmtKm(rSync) + ", inside the safe floor: it spins too fast for one</dd>";
+      else if (rSync > ceiling) rows += "<dt>Stationary orbit</dt><dd>would sit at " + VSS.fmtKm(rSync) + ", outside its bubble: it spins too slowly for one to hold</dd>";
+      else {
         rows += "<dt>Stationary orbit</dt><dd>" + VSS.fmtKm(rSync) + " from centre" +
           (rot.retrograde ? ", running backwards to match its backwards day" : "") +
           (cur.id === "earth" ? " (the geostationary ring)" : "") + "</dd>";
@@ -213,20 +270,10 @@ VSS.mountChrome("orbit-lab.html");
         if (rSemi > bands.minKm) rows += "<dt>Half-day orbit</dt><dd>" + VSS.fmtKm(rSemi) + ", two laps per day, the Molniya trick</dd>";
       }
     }
-
-    // sun-synchronous
-    if (parent) {
-      rows += "<dt>Sun-synchronous</dt><dd>a heliocentric trick; around a moon the parent's pull is the big lever instead</dd>";
-    } else if (!j2) {
-      rows += "<dt>Sun-synchronous</dt><dd>its oblateness has not been measured well enough to quote one</dd>";
-    }
-    // the live sun-sync line for j2 bodies sits in the readouts, updated with the radius slider
-
-    if (cur.radiusKm < 5) {
-      note = "At a body this small, sunlight's push rivals the lumpy gravity: real missions favour terminator orbits, riding the day-night line the way OSIRIS-REx did at Bennu.";
-    }
     document.getElementById("spec-rows").innerHTML = rows;
-    document.getElementById("spec-note").textContent = note;
+    document.getElementById("spec-note").textContent = cur.radiusKm < 5
+      ? "At a body this small, sunlight's push rivals the lumpy gravity: real missions favour terminator orbits over the day-night line, as OSIRIS-REx flew at Bennu."
+      : "";
 
     var syncOk = rSync && !rot.locked && !rot.chaotic && rSync >= bands.minKm && rSync <= (rot.retrograde ? bands.retrogradeMaxKm : bands.progradeMaxKm);
     var bs = document.getElementById("btn-sync");
@@ -236,127 +283,205 @@ VSS.mountChrome("orbit-lab.html");
     var be = document.getElementById("btn-ss");
     be.disabled = !ssOk;
     be.title = ssOk ? "Low orbit tilted so the seasons keep your lighting" : "Needs a measured oblateness on a heliocentric body";
+    document.getElementById("btn-mol").disabled = !j2;
+    document.getElementById("btn-mol").title = j2 ? "Stretched half-day orbit with frozen apsides at 63.4°" : "Needs a measured oblateness";
   }
 
   function update() {
-    var r = sliderToR();
-    var inc = +incSlider.value;
-    document.getElementById("inc-out").textContent = inc + "°";
-    document.getElementById("inc-word").textContent = inc === 0 ? "equatorial" : inc === 90 ? "polar" : inc > 90 ? "retrograde" : "";
-    var vc = A.circVel(gm, r);
-    var hours = A.orbPeriodHours(gm, r);
-    document.getElementById("o-r").textContent = VSS.fmtKm(r) + " from centre";
-    document.getElementById("o-alt").textContent = r > cur.radiusKm ? VSS.fmtKm(r - cur.radiusKm) + " above the surface" : "below the surface";
-    document.getElementById("o-t").textContent = hours < 48 ? VSS.fmt(hours, 1) + " hours" : VSS.fmt(hours / 24, 1) + " days";
-    document.getElementById("o-v").textContent = VSS.fmtSpeed(vc);
+    var el = elements();
+    var incDeg = +incS.value;
+    document.getElementById("inc-out").textContent = incDeg + "°";
+    document.getElementById("inc-word").textContent = incDeg === 0 ? "equatorial" : incDeg === 90 ? "polar" : incDeg > 90 ? "retrograde" : "";
+    document.getElementById("ecc-out").textContent = (el.e).toFixed(2);
+    document.getElementById("argp-out").textContent = argpS.value + "°";
+    document.getElementById("raan-out").textContent = raanS.value + "°";
+    document.getElementById("r-label").textContent = advanced ? "Size (semi-major axis)" : "Radius";
 
-    var ssEl = document.getElementById("o-ss");
-    if (parent) ssEl.textContent = "not out here";
-    else if (!j2) ssEl.textContent = "oblateness unmeasured";
+    var rp = el.a * (1 - el.e), ra = el.a * (1 + el.e);
+    var hours = A.orbPeriodHours(gm, el.a);
+    var vPeri = Math.sqrt(gm * (2 / rp - 1 / el.a));
+    var vApo = Math.sqrt(gm * (2 / ra - 1 / el.a));
+    var rows = "";
+    if (!advanced) {
+      rows += "<dt>Radius</dt><dd>" + VSS.fmtKm(el.a) + " from centre</dd>";
+      rows += "<dt>Altitude</dt><dd>" + (el.a > cur.radiusKm ? VSS.fmtKm(el.a - cur.radiusKm) + " above the surface" : "below the surface") + "</dd>";
+      rows += "<dt>Lap time</dt><dd>" + (hours < 48 ? VSS.fmt(hours, 1) + " hours" : VSS.fmt(hours / 24, 1) + " days") + "</dd>";
+      rows += "<dt>Speed</dt><dd>" + VSS.fmtSpeed(vPeri) + "</dd>";
+    } else {
+      rows += "<dt>Closest pass</dt><dd>" + VSS.fmtKm(rp) + " (" + (rp > cur.radiusKm ? VSS.fmtKm(rp - cur.radiusKm) + " up" : "under the surface") + ") at " + VSS.fmtSpeed(vPeri) + "</dd>";
+      rows += "<dt>Farthest reach</dt><dd>" + VSS.fmtKm(ra) + " at " + VSS.fmtSpeed(vApo) + "</dd>";
+      rows += "<dt>Lap time</dt><dd>" + (hours < 48 ? VSS.fmt(hours, 1) + " hours" : VSS.fmt(hours / 24, 1) + " days") + "</dd>";
+      if (j2) {
+        var p = el.a * (1 - el.e * el.e);
+        var n = Math.sqrt(gm / (el.a * el.a * el.a));
+        var k = 1.5 * j2 * n * Math.pow(cur.radiusKm / p, 2) * 86400 / D2R;
+        var nodeDot = -k * Math.cos(el.i);
+        var apseDot = 0.5 * k * (5 * Math.cos(el.i) * Math.cos(el.i) - 1);
+        rows += "<dt>Node drift</dt><dd>" + VSS.fmt(nodeDot, 3) + "°/day from its oblateness</dd>";
+        rows += "<dt>Apse drift</dt><dd>" + VSS.fmt(apseDot, 3) + "°/day" + (Math.abs(apseDot) < 0.002 ? " (frozen: the 63.4° trick)" : "") + "</dd>";
+      }
+    }
+    if (parent) rows += "<dt>Sun-sync here</dt><dd>not out here; the parent's pull is the big lever</dd>";
+    else if (!j2) rows += "<dt>Sun-sync here</dt><dd>oblateness unmeasured</dd>";
     else {
-      var iss = A.sunSyncIncDeg(gm, j2, cur.radiusKm, r, bodyYear);
-      ssEl.textContent = iss === null ? "no tilt precesses fast enough at this height" : "tilt to " + VSS.fmt(iss, 1) + "° and the seasons keep your lighting";
+      var iss = A.sunSyncIncDeg(gm, j2, cur.radiusKm, el.a, bodyYear);
+      rows += "<dt>Sun-sync here</dt><dd>" + (iss === null ? "no tilt precesses fast enough at this size" : "tilt to " + VSS.fmt(iss, 1) + "° and the seasons keep your lighting") + "</dd>";
     }
 
-    var ceiling = inc > 90 ? bands.retrogradeMaxKm : bands.progradeMaxKm;
-    var vd = document.getElementById("o-verdict");
-    if (r <= cur.radiusKm) { vd.innerHTML = '<span class="verdict bad">that is inside the body</span>'; }
-    else if (r < bands.minKm) { vd.innerHTML = '<span class="verdict bad">too low, terrain and debris risk</span>'; }
-    else if (r <= ceiling) { vd.innerHTML = '<span class="verdict ok">stable at this tilt</span>'; }
-    else if (r <= bands.retrogradeMaxKm) { vd.innerHTML = '<span class="verdict warn">only a backwards orbit (tilt past 90°) holds this far out</span>'; }
-    else { vd.innerHTML = '<span class="verdict bad">outside the bubble, the ' + (parent ? "parent planet" : "Sun") + " wins</span>"; }
-
-    var ins = A.insertionDv(gm, vinf, r);
-    document.getElementById("b-ins").textContent = VSS.fmt(ins, 2) + " km/s of braking to be captured here";
+    var ceiling = incDeg > 90 ? bands.retrogradeMaxKm : bands.progradeMaxKm;
+    var verdict;
+    if (rp <= cur.radiusKm) verdict = '<span class="verdict bad">the closest pass hits the body</span>';
+    else if (rp < bands.minKm) verdict = '<span class="verdict bad">the closest pass dips under the safe floor</span>';
+    else if (ra <= ceiling) verdict = '<span class="verdict ok">stable at this tilt</span>';
+    else if (ra <= bands.retrogradeMaxKm) verdict = '<span class="verdict warn">the far end only holds on a backwards tilt (past 90°)</span>';
+    else verdict = '<span class="verdict bad">the far end pokes out of the bubble; the ' + (parent ? "parent planet" : "Sun") + " wins</span>";
+    rows += "<dt>Verdict</dt><dd>" + verdict + "</dd>";
+    document.getElementById("readouts").innerHTML = rows;
+    document.getElementById("b-ins").textContent = VSS.fmt(A.insertionDv(gm, vinf, el.a), 2) + " km/s of braking to be captured here";
   }
 
   // ---- drawing ----
-  function ring(km, inc, colour, width, dash) {
-    ctx.strokeStyle = colour; ctx.lineWidth = width;
-    ctx.setLineDash(dash || []);
-    var ci = Math.cos(inc), si = Math.sin(inc);
+  function ringPath(km, fn, colour, width, dash) {
+    ctx.strokeStyle = colour; ctx.lineWidth = width; ctx.setLineDash(dash || []);
     ctx.beginPath();
     for (var k = 0; k <= 72; k++) {
       var a = k / 72 * 2 * Math.PI;
-      var p = p3(km, Math.cos(a), Math.sin(a) * ci, Math.sin(a) * si);
-      k ? ctx.lineTo(p.x, p.y) : ctx.moveTo(p.x, p.y);
-    }
-    ctx.stroke();
-    ctx.setLineDash([]);
-  }
-  function shell(km, colour) {
-    ring(km, 0, colour, 1, [4, 5]);
-    ring(km, Math.PI / 2, colour, 1, [4, 5]);
-    ctx.strokeStyle = colour; ctx.lineWidth = 1; ctx.setLineDash([4, 5]);
-    ctx.beginPath();
-    for (var k = 0; k <= 72; k++) {
-      var a = k / 72 * 2 * Math.PI;
-      var p = p3(km, 0, Math.cos(a), Math.sin(a));
+      var u = fn(a);
+      var p = p3(km, u[0], u[1], u[2]);
       k ? ctx.lineTo(p.x, p.y) : ctx.moveTo(p.x, p.y);
     }
     ctx.stroke(); ctx.setLineDash([]);
   }
+  function shell(km, colour) {
+    ringPath(km, function (a) { return [Math.cos(a), Math.sin(a), 0]; }, colour, 1, [4, 5]);
+    ringPath(km, function (a) { return [Math.cos(a), 0, Math.sin(a)]; }, colour, 1, [4, 5]);
+    ringPath(km, function (a) { return [0, Math.cos(a), Math.sin(a)]; }, colour, 1, [4, 5]);
+  }
 
   function draw(dt) {
-    var r = sliderToR();
-    var inc = +incSlider.value * Math.PI / 180;
-    var n = Math.sqrt(gm / (r * r * r));            // rad/s true orbital rate
-    theta += n * dt * simMult; // retrograde motion emerges from the tilt geometry itself
+    var el = elements();
+    var n = Math.sqrt(gm / (el.a * el.a * el.a));
+    M += n * dt * simMult;
     if (rot && rot.seconds && !rot.chaotic) lambda += (2 * Math.PI / rot.seconds) * dt * simMult * (rot.retrograde ? -1 : 1);
 
     ctx.clearRect(0, 0, W, H);
     ctx.fillStyle = "rgba(220,229,245,.06)";
     for (var s = 0; s < 50; s++) ctx.fillRect((s * 971) % W, (s * 613) % H, 1, 1);
 
-    // gravity shells: safe floor, prograde ceiling, retrograde ceiling
+    var maxVis = scaleMode === "lin" ? fitKm() : bands.retrogradeMaxKm * 1.1;
+
+    // the body's own orbit plane, at its true tilt, with today's sunward arrow
+    var eps = (obliq || 0) * D2R;
+    var ce = Math.cos(eps), se = Math.sin(eps);
+    ringPath(maxVis * 0.98, function (a) { return [Math.cos(a), Math.sin(a) * ce, Math.sin(a) * se]; }, "rgba(140,155,184,.3)", 1, [2, 6]);
+    var sw = [Math.cos(sunAz), Math.sin(sunAz) * ce, Math.sin(sunAz) * se];
+    var spA = p3(cur.radiusKm * 1.1, sw[0], sw[1], sw[2]);
+    var spB = p3(maxVis * 0.95, sw[0], sw[1], sw[2]);
+    ctx.strokeStyle = "#ffd76a"; ctx.lineWidth = 1.6;
+    ctx.beginPath(); ctx.moveTo(spA.x, spA.y); ctx.lineTo(spB.x, spB.y); ctx.stroke();
+    ctx.fillStyle = "#ffd76a"; ctx.font = "12px system-ui, sans-serif";
+    ctx.fillText("☀ sunward", spB.x + 5, spB.y - 4);
+
+    // toward the parent, for tidally locked moons the fixed near-side direction
+    if (parent) {
+      var pp = p3(maxVis * 0.6, 1, 0, 0);
+      ctx.strokeStyle = "rgba(220,229,245,.5)"; ctx.lineWidth = 1.2;
+      var pa = p3(cur.radiusKm * 1.1, 1, 0, 0);
+      ctx.beginPath(); ctx.moveTo(pa.x, pa.y); ctx.lineTo(pp.x, pp.y); ctx.stroke();
+      ctx.fillStyle = "rgba(220,229,245,.8)";
+      ctx.fillText("to " + parent.name + (rot && rot.locked ? " (near side)" : ""), pp.x + 5, pp.y + 12);
+    }
+
+    // gravity shells
     shell(bands.progradeMaxKm, "rgba(74,222,128,.28)");
     shell(bands.retrogradeMaxKm, "rgba(251,191,36,.22)");
 
-    // spin axis
-    var pTop = p3(Math.min(bands.retrogradeMaxKm, cur.radiusKm * 4), 0, 0, 1);
-    var pBot = p3(Math.min(bands.retrogradeMaxKm, cur.radiusKm * 4), 0, 0, -1);
-    ctx.strokeStyle = "rgba(140,155,184,.4)"; ctx.lineWidth = 1;
-    ctx.beginPath(); ctx.moveTo(pTop.x, pTop.y); ctx.lineTo(pBot.x, pBot.y); ctx.stroke();
+    // spin axis with named poles
+    var axLen = Math.min(maxVis, Math.max(cur.radiusKm * 3.2, bands.minKm * 1.6));
+    var pN = p3(axLen, 0, 0, 1), pS = p3(axLen, 0, 0, -1);
+    ctx.strokeStyle = "rgba(220,229,245,.55)"; ctx.lineWidth = 1.2;
+    ctx.beginPath(); ctx.moveTo(pN.x, pN.y); ctx.lineTo(pS.x, pS.y); ctx.stroke();
+    ctx.fillStyle = "rgba(220,229,245,.85)";
+    ctx.fillText("N", pN.x + 5, pN.y - 3);
+    ctx.fillText("S", pS.x + 5, pS.y + 12);
 
-    // body sphere and equator
-    var Rpx = px(cur.radiusKm);
+    // magnetic axis where measured
+    if (magTilt !== undefined) {
+      var mt = magTilt * D2R;
+      var mN = p3(axLen * 0.9, Math.sin(mt), 0, Math.cos(mt));
+      var mS = p3(axLen * 0.9, -Math.sin(mt), 0, -Math.cos(mt));
+      ctx.strokeStyle = "rgba(251,113,133,.7)"; ctx.lineWidth = 1.2;
+      ctx.setLineDash([6, 4]);
+      ctx.beginPath(); ctx.moveTo(mN.x, mN.y); ctx.lineTo(mS.x, mS.y); ctx.stroke();
+      ctx.setLineDash([]);
+      ctx.fillStyle = "rgba(251,113,133,.9)";
+      ctx.fillText("magnetic", mN.x + 5, mN.y + 10);
+    }
+
+    // the body, in its own colours
+    var Rpx = Math.max(px(cur.radiusKm), 3);
     var g = ctx.createRadialGradient(CX - Rpx * 0.4, CY - Rpx * 0.4, Rpx * 0.1, CX, CY, Rpx);
-    g.addColorStop(0, "#b9c4da"); g.addColorStop(0.6, "#8c9bb8"); g.addColorStop(1, "#3a4560");
+    g.addColorStop(0, shade(70)); g.addColorStop(0.6, shade(0)); g.addColorStop(1, shade(-80));
     ctx.fillStyle = g;
-    ctx.beginPath(); ctx.arc(CX, CY, Math.max(Rpx, 3), 0, 7); ctx.fill();
-    ring(cur.radiusKm, 0, "rgba(220,229,245,.35)", 1);
-
-    // surface marker riding the equator: watch it against your satellite
+    ctx.beginPath(); ctx.arc(CX, CY, Rpx, 0, 7); ctx.fill();
+    if (["jupiter", "saturn", "uranus", "neptune"].indexOf(cur.id) >= 0) {
+      ctx.save(); ctx.beginPath(); ctx.arc(CX, CY, Rpx, 0, 7); ctx.clip();
+      for (var b2 = -2; b2 <= 2; b2++) {
+        ctx.fillStyle = shade(b2 % 2 ? 24 : -18, 0.5);
+        ctx.fillRect(CX - Rpx, CY + b2 * Rpx * 0.32 - Rpx * 0.09, 2 * Rpx, Rpx * 0.18);
+      }
+      ctx.restore();
+    }
+    ringPath(cur.radiusKm, function (a) { return [Math.cos(a), Math.sin(a), 0]; }, shade(60, 0.5), 1);
+    // rotating meridian and surface marker: watch the day turn
     if (rot && rot.seconds && !rot.chaotic) {
-      var mk = p3(cur.radiusKm * 1.02, Math.cos(lambda), Math.sin(lambda), 0);
+      ringPath(cur.radiusKm * 1.001, function (a) { return [Math.cos(a) * Math.cos(lambda), Math.cos(a) * Math.sin(lambda), Math.sin(a)]; }, shade(40, 0.35), 1);
+      var mk = p3(cur.radiusKm * 1.03, Math.cos(lambda), Math.sin(lambda), 0);
       ctx.fillStyle = "#f0b429";
       ctx.beginPath(); ctx.arc(mk.x, mk.y, 3, 0, 7); ctx.fill();
     }
 
     // stationary ring
-    if (rSync && !rot.locked && !rot.chaotic && rSync <= bands.retrogradeMaxKm * 1.2 && rSync >= bands.minKm * 0.5) {
-      ring(rSync, 0, "rgba(240,180,41,.5)", 1.2, [6, 5]);
+    if (rSync && rot && !rot.locked && !rot.chaotic && rSync <= bands.retrogradeMaxKm * 1.2 && rSync >= bands.minKm * 0.5 && rSync < maxVis * 1.2) {
+      ringPath(rSync, function (a) { return [Math.cos(a), Math.sin(a), 0]; }, "rgba(240,180,41,.5)", 1.2, [6, 5]);
     }
 
-    // your orbit and satellite
-    ring(r, inc, "#4cc9f0", 2);
-    var ci = Math.cos(inc), si = Math.sin(inc);
-    var sat = { x: Math.cos(theta), y: Math.sin(theta) * ci, z: Math.sin(theta) * si };
-    trail.push(sat);
+    // your orbit: the true ellipse, and the satellite at Kepler-true speed
+    ctx.strokeStyle = "#4cc9f0"; ctx.lineWidth = 2;
+    ctx.beginPath();
+    for (var k = 0; k <= 90; k++) {
+      var nu2 = k / 90 * 2 * Math.PI;
+      var q = orbPoint(el, nu2);
+      var p = p3(q.km, q.x, q.y, q.z);
+      k ? ctx.lineTo(p.x, p.y) : ctx.moveTo(p.x, p.y);
+    }
+    ctx.stroke();
+    if (advanced && el.e > 0.01) {
+      var qp = orbPoint(el, 0);
+      var pp2 = p3(qp.km, qp.x, qp.y, qp.z);
+      ctx.fillStyle = "#f0b429";
+      ctx.beginPath(); ctx.arc(pp2.x, pp2.y, 3, 0, 7); ctx.fill();
+      ctx.fillText("peri", pp2.x + 5, pp2.y - 3);
+    }
+    var E = A.solveKepler(M % (2 * Math.PI), el.e);
+    var nu = Math.atan2(Math.sqrt(1 - el.e * el.e) * Math.sin(E), Math.cos(E) - el.e);
+    var qs = orbPoint(el, nu);
+    trail.push(qs);
     if (trail.length > 90) trail.shift();
     ctx.strokeStyle = "rgba(76,201,240,.35)"; ctx.lineWidth = 1.2;
     ctx.beginPath();
     trail.forEach(function (t, i2) {
-      var p = p3(r, t.x, t.y, t.z);
+      var p = p3(t.km, t.x, t.y, t.z);
       i2 ? ctx.lineTo(p.x, p.y) : ctx.moveTo(p.x, p.y);
     });
     ctx.stroke();
-    var sp = p3(r, sat.x, sat.y, sat.z);
+    var sp2 = p3(qs.km, qs.x, qs.y, qs.z);
     ctx.fillStyle = "#4cc9f0";
-    ctx.beginPath(); ctx.arc(sp.x, sp.y, 4.5, 0, 7); ctx.fill();
+    ctx.beginPath(); ctx.arc(sp2.x, sp2.y, 4.5, 0, 7); ctx.fill();
 
     document.getElementById("hud").textContent =
-      cur.name + " · drag to tilt and spin · green shell: steady limit · amber shell: backwards limit · gold dashes: stationary ring (compressed scale)";
+      cur.name + " · drag to tilt and spin · " + (scaleMode === "lin" ? "true scale" : "compressed scale") +
+      (advanced ? " · advanced: true Kepler motion, fast at periapsis" : "");
   }
 
   var last = performance.now();
@@ -391,20 +516,43 @@ VSS.mountChrome("orbit-lab.html");
   }, { passive: false });
   window.addEventListener("touchend", function () { dragging = false; });
 
-  slider.addEventListener("input", function () { trail = []; update(); });
-  incSlider.addEventListener("input", function () { trail = []; update(); });
+  // ---- modes ----
+  function setMode(adv) {
+    advanced = adv;
+    document.getElementById("m-adv").setAttribute("aria-pressed", String(adv));
+    document.getElementById("m-simple").setAttribute("aria-pressed", String(!adv));
+    document.getElementById("adv-rows").style.display = adv ? "" : "none";
+    trail = [];
+    update();
+  }
+  document.getElementById("m-simple").addEventListener("click", function () { setMode(false); });
+  document.getElementById("m-adv").addEventListener("click", function () { setMode(true); });
+
+  [slider, incS, eccS, argpS, raanS].forEach(function (s) {
+    s.addEventListener("input", function () { trail = []; update(); });
+  });
   sel.addEventListener("change", function () { setTarget(sel.value); });
-  document.querySelectorAll("#preset-row button").forEach(function (b) {
+  document.querySelectorAll("#preset-row .chip").forEach(function (b) {
     b.addEventListener("click", function () {
       if (b.disabled) return;
+      eccS.value = 0;
       if (b.dataset.p === "low") { slider.value = rToSlider(bands.minKm * 1.3); }
-      if (b.dataset.p === "mid") { slider.value = rToSlider(Math.min(bands.minKm * 4, bands.progradeMaxKm / 2)); incSlider.value = 55; }
-      if (b.dataset.p === "dro") { slider.value = rToSlider(bands.retrogradeMaxKm * 0.8); incSlider.value = 180; }
-      if (b.dataset.p === "sync") { slider.value = rToSlider(rSync); incSlider.value = rot.retrograde ? 180 : 0; }
+      if (b.dataset.p === "mid") { slider.value = rToSlider(Math.min(bands.minKm * 4, bands.progradeMaxKm / 2)); incS.value = 55; }
+      if (b.dataset.p === "dro") { slider.value = rToSlider(bands.retrogradeMaxKm * 0.8); incS.value = 180; }
+      if (b.dataset.p === "sync") { slider.value = rToSlider(rSync); incS.value = rot.retrograde ? 180 : 0; }
       if (b.dataset.p === "ss") {
         slider.value = rToSlider(bands.minKm * 1.3);
         var iss = A.sunSyncIncDeg(gm, j2, cur.radiusKm, sliderToR(), bodyYear);
-        if (iss !== null) incSlider.value = Math.round(iss);
+        if (iss !== null) incS.value = Math.round(iss);
+      }
+      if (b.dataset.p === "molniya") {
+        if (!advanced) setMode(true);
+        var aM = rSync ? A.syncOrbitKm(gm, rot.seconds / 2) : bands.minKm * 4;
+        aM = Math.max(aM, bands.minKm * 2.2);
+        slider.value = rToSlider(aM);
+        var eMax = 1 - (bands.minKm * 1.15) / sliderToR();
+        eccS.value = Math.round(Math.max(0, Math.min(0.74, eMax)) * 100);
+        incS.value = 63.4; argpS.value = 270; raanS.value = 0;
       }
       trail = [];
       update();
