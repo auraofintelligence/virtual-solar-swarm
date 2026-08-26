@@ -430,14 +430,19 @@ VSS.mountChrome("orbit-lab.html");
     var swX = spB.x < CX ? spB.x - 5 - ctx.measureText(swLabel).width : spB.x + 5;
     ctx.fillText(swLabel, Math.max(2, swX), spB.y - 4);
 
-    // toward the parent, for tidally locked moons the fixed near-side direction
-    if (parent) {
-      var pp = p3(maxVis * 0.6, 1, 0, 0);
+    /* A tidally locked moon keeps one face to its planet, so the sub-planet
+       point sits at a fixed longitude and rides round with the spin. Where the
+       body is not locked the catalogue does not carry the planet's direction,
+       so nothing is drawn rather than an arrow pointing nowhere in particular. */
+    if (parent && rot && rot.locked && !rot.chaotic) {
+      var plon = lambda;
+      var pd = [Math.cos(plon), Math.sin(plon), 0];
+      var pp = p3(maxVis * 0.6, pd[0], pd[1], pd[2]);
+      var pa = p3(cur.radiusKm * 1.1, pd[0], pd[1], pd[2]);
       ctx.strokeStyle = "rgba(220,229,245,.5)"; ctx.lineWidth = 1.2;
-      var pa = p3(cur.radiusKm * 1.1, 1, 0, 0);
       ctx.beginPath(); ctx.moveTo(pa.x, pa.y); ctx.lineTo(pp.x, pp.y); ctx.stroke();
       ctx.fillStyle = "rgba(220,229,245,.8)";
-      ctx.fillText("to " + parent.name + (rot && rot.locked ? " (near side)" : ""), pp.x + 5, pp.y + 12);
+      ctx.fillText("to " + parent.name + " (near side)", pp.x + 5, pp.y + 12);
     }
 
     // gravity shells
@@ -453,17 +458,26 @@ VSS.mountChrome("orbit-lab.html");
     ctx.fillText("N", pN.x + 5, pN.y - 3);
     ctx.fillText("S", pS.x + 5, pS.y + 12);
 
-    // magnetic axis where measured
+    /* Magnetic axis where measured. It is fixed in the body, not in space, so
+       it has to be carried round by the same spin the surface gets: a tilted
+       field traces a cone about the spin axis once a day. Neptune, leaning
+       46.9 degrees, swings the furthest. */
     if (magTilt !== undefined) {
       var mt = magTilt * D2R;
-      var mN = p3(axLen * 0.9, Math.sin(mt), 0, Math.cos(mt));
-      var mS = p3(axLen * 0.9, -Math.sin(mt), 0, -Math.cos(mt));
+      var mLon = (rot && rot.seconds && !rot.chaotic) ? lambda : 0;
+      var mdir = [Math.sin(mt) * Math.cos(mLon), Math.sin(mt) * Math.sin(mLon), Math.cos(mt)];
+      var mN = p3(axLen * 0.9, mdir[0], mdir[1], mdir[2]);
+      var mS = p3(axLen * 0.9, -mdir[0], -mdir[1], -mdir[2]);
+      // depth along the camera's view axis: positive means this end faces us
+      var ctv = Math.cos(camTilt), stv = Math.sin(camTilt);
+      var nearN = (-Math.sin(yaw) * stv * mdir[0] - Math.cos(yaw) * stv * mdir[1] + ctv * mdir[2]) > 0;
       ctx.strokeStyle = "rgba(251,113,133,.7)"; ctx.lineWidth = 1.2;
       ctx.setLineDash([6, 4]);
       ctx.beginPath(); ctx.moveTo(mN.x, mN.y); ctx.lineTo(mS.x, mS.y); ctx.stroke();
       ctx.setLineDash([]);
-      ctx.fillStyle = "rgba(251,113,133,.9)";
-      ctx.fillText("magnetic", mN.x + 5, mN.y + 10);
+      ctx.fillStyle = nearN ? "#fb7185" : "rgba(251,113,133,.45)";
+      ctx.beginPath(); ctx.arc(mN.x, mN.y, 3.2, 0, 7); ctx.fill();
+      ctx.fillText("magnetic N" + (nearN ? "" : " (far side)"), mN.x + 6, mN.y + 10);
     }
 
     // ---- the body: its skin, texture-mapped in 3D, lit by the real sunward direction ----
