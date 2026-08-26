@@ -39,7 +39,7 @@
     </div>
     <dl class="kv" style="margin-top:.6rem">
       <dt>Bodies with a crew of their own</dt><dd id="c-crewed">·</dd>
-      <dt>The Sun's ring</dt><dd id="c-sun">·</dd>
+      <dt>The solar observatory</dt><dd id="c-sun">·</dd>
       <dt>An ordinary picket</dt><dd id="c-picket">·</dd>
       <dt>Replacements each year</dt><dd id="c-repl">·</dd>
     </dl>
@@ -118,7 +118,7 @@ VSS.mountChrome("index.html");
     }, 0);
     document.getElementById("fleet-out").textContent = VSS.fmt(built);
     document.getElementById("c-crewed").textContent = VSS.fmt(crewed) + " of " + objs.length;
-    document.getElementById("c-sun").textContent = VSS.fmt(VSS.TIERS.observatory.n) + " watchers around the Sun";
+    document.getElementById("c-sun").textContent = VSS.fmt(VSS.TIERS.observatory.n) + " watchers, across eleven regimes";
     document.getElementById("c-picket").textContent = VSS.fmt(VSS.TIERS.picket.n) + " satellites per ordinary body";
     document.getElementById("c-repl").textContent = VSS.fmt(repl, 0) + " built and sent each year to keep it whole";
   }
