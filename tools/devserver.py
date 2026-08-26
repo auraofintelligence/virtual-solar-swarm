@@ -29,8 +29,14 @@ class NoCache(http.server.SimpleHTTPRequestHandler):
             sys.stderr.write("%s\n" % (fmt % args))
 
 
-socketserver.TCPServer.allow_reuse_address = True
+class Server(socketserver.ThreadingTCPServer):
+    """Threaded: a browser holding a keep-alive connection would otherwise
+    block every other request, including the next page load."""
+    allow_reuse_address = True
+    daemon_threads = True
+
+
 handler = functools.partial(NoCache, directory=ROOT)
-with socketserver.TCPServer(("", PORT), handler) as httpd:
+with Server(("", PORT), handler) as httpd:
     print("serving %s at http://localhost:%d with caching off" % (ROOT, PORT), flush=True)
     httpd.serve_forever()
