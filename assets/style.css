@@ -229,7 +229,7 @@ hr.soft { border: 0; border-top: 1px solid var(--panel-edge); margin: 2rem 0; }
 /* ---------- song blocks: a video in a vertical phone frame ---------- */
 .song-block {
   display: grid; grid-template-columns: auto 1fr; gap: 1.6rem;
-  align-items: center; margin: 2rem 0;
+  align-items: center; margin: 2rem 0; clear: both;
   background: var(--panel); border: 1px solid var(--panel-edge);
   border-radius: var(--radius); padding: 1.3rem;
 }

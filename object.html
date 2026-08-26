@@ -83,6 +83,7 @@ VSS.mountChrome("targets.html");
     html += '<p class="dim small">A census entry: no dedicated picket, but the host system\'s swarm and the survey sweeps keep it in view, and any of it is one decision away from a picket of its own.</p>';
   }
   html += '<p class="lede">' + (o.why || "") + "</p>";
+  if (isSun) html += '<div id="song-sun"></div>';
 
   html += '<div class="grid cols-2">';
   html += '<div class="card"><h3>Fast facts</h3><dl class="kv">' +
@@ -196,6 +197,32 @@ VSS.mountChrome("targets.html");
   }
   html += "</div>";
 
+  // ----- watching the real thing: open data, for the Sun -----
+  if (isSun) {
+    html += '<h2 style="clear:both">Watching the real Sun</h2>';
+    html += '<p class="dim small">Everything else on this site is a model. These are the real feeds, most of them open data you can pull yourself.</p>';
+    html += '<div class="grid cols-3">';
+    html += '<div class="card"><h3>Live right now</h3><ul class="dim small" style="display:grid; gap:.35rem; padding-left:1.1rem">' +
+      '<li><a href="https://www.swpc.noaa.gov/">NOAA Space Weather Prediction Center</a>: the official forecasts, alerts and real-time solar wind from L1</li>' +
+      '<li><a href="https://sdo.gsfc.nasa.gov/">NASA Solar Dynamics Observatory</a>: the Sun photographed in a dozen wavelengths, updated continuously</li>' +
+      '<li><a href="https://science.nasa.gov/mission/solar-orbiter/">ESA and NASA Solar Orbiter</a>: the mission flying over the solar poles this site keeps citing</li>' +
+      '<li><a href="https://helioviewer.org/">Helioviewer</a>: browse and stack decades of solar imagery in one viewer</li>' +
+      "</ul></div>";
+    html += '<div class="card"><h3>Daily watch</h3><ul class="dim small" style="display:grid; gap:.35rem; padding-left:1.1rem">' +
+      '<li><a href="https://spaceweathernews.com/">Space Weather News</a>: daily independent briefings on the Sun, the field and the forecast</li>' +
+      '<li><a href="https://spaceweather.com/">SpaceWeather.com</a>: long-running daily log of flares, spots and aurora</li>' +
+      '<li><a href="https://www.spaceweatherlive.com/">SpaceWeatherLive</a>: live dials, archives and aurora alerts</li>' +
+      '<li><a href="https://auraofintelligence.github.io/space-weather-news/">Space Weather News, civic newsroom</a>: our own build, plain-language and local</li>' +
+      "</ul></div>";
+    html += '<div class="card"><h3>Data you can query</h3><ul class="dim small" style="display:grid; gap:.35rem; padding-left:1.1rem">' +
+      '<li><a href="https://api.nasa.gov/">NASA Open APIs</a>: a free key, then imagery and space weather endpoints</li>' +
+      '<li><a href="https://ccmc.gsfc.nasa.gov/tools/DONKI/">DONKI</a>: NASA catalogue of flares, coronal mass ejections and storms, with an API</li>' +
+      '<li><a href="https://cdaweb.gsfc.nasa.gov/">CDAWeb</a>: the raw heliophysics archive, decades of field and particle data</li>' +
+      '<li><a href="https://ssd.jpl.nasa.gov/horizons/">JPL Horizons</a>: the ephemeris this site orbits should be checked against</li>' +
+      "</ul></div></div>";
+    html += '<p class="faint">The wilder end of the solar-cycle question, micro-novas and galactic current sheets included, is gathered separately in <a href="https://auraofintelligence.github.io/micronova-and-excursions/">Micronova and Excursions</a>: an evidence ledger rather than a verdict.</p>';
+  }
+
   // ----- the system around it -----
   var kids = window.VSS_OBJECTS.filter(function (k) { return k.parent === o.id; });
   if (kids.length) {
@@ -216,8 +243,6 @@ VSS.mountChrome("targets.html");
   if (parent) {
     html += '<p class="small">Part of the <a href="object.html?id=' + parent.id + '">' + parent.name + " system →</a></p>";
   }
-
-  if (isSun) html += '<div id="song-sun"></div>';
 
   page.innerHTML = html;
   if (isSun) {
