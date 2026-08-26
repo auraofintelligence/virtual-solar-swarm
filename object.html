@@ -73,14 +73,14 @@ VSS.mountChrome("targets.html");
   html += '<div class="portrait-hero"><canvas id="portrait" width="300" height="300"></canvas>' +
     '<div class="faint">' + (mapped
       ? "wearing its real map · " + mapped.credit
-      : "no map of it aboard this site; drawn plain in its measured colour rather than an invented surface") +
+      : "no map of it aboard this site; drawn as a lit sphere under a latitude and longitude grid rather than an invented surface") +
     "</div></div>";
   html += "<h1>" + o.name + "</h1>";
   html += '<p><span class="badge t-' + o.tier + '">' + VSS.TIERS[o.tier].label +
     (o.tier === "survey" ? "" : " · " + sats + " satellites") + "</span> &nbsp; " +
     '<span class="dim">' + (VSS.CLS_LABEL[o.cls] || o.cls) + " · " + o.group + "</span></p>";
   if (o.tier === "survey") {
-    html += '<p class="dim small">A census entry: no dedicated picket, but the host system\'s swarm and the survey sweeps keep it in view, and any of it is one funding vote away from a picket of its own.</p>';
+    html += '<p class="dim small">A census entry: no dedicated picket, but the host system\'s swarm and the survey sweeps keep it in view, and any of it is one decision away from a picket of its own.</p>';
   }
   html += '<p class="lede">' + (o.why || "") + "</p>";
 

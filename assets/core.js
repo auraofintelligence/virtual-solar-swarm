@@ -20,6 +20,11 @@
     ["about.html", "About"]
   ];
 
+  /* The starting point: the tier sizes this study began counting with.
+     Nothing fixes them. The reader's own choice is remembered and every page
+     on the site reads from it. */
+  var STARTING_FLEET = 1332;
+
   var TIERS = {
     observatory: { label: "Solar observatory", n: 100, cssVar: "--tier-obs" },
     swarm:       { label: "Priority swarm",    n: 50,  cssVar: "--tier-swarm" },
@@ -28,6 +33,42 @@
     intercept:   { label: "Interceptor pair",  n: 2,   cssVar: "--tier-int" },
     survey:      { label: "Survey entry",      n: 0,   cssVar: "--tier-survey" }
   };
+
+  /* Proportional laws pinned so the starting fleet reproduces the starting
+     line-up exactly. Same laws the scale page uses. */
+  function tierSizesFor(F) {
+    var g = F / STARTING_FLEET;
+    return {
+      observatory: Math.max(1, Math.round(100 * g)),
+      swarm: Math.max(1, Math.round(50 * g)),
+      enhanced: Math.max(1, Math.round(12 * g)),
+      picket: Math.max(1, Math.round(4 * g)),
+      intercept: Math.max(1, Math.round(2 * g)),
+      survey: 0
+    };
+  }
+  function readChoice() {
+    try {
+      var v = parseInt(localStorage.getItem("vss-fleet"), 10);
+      if (v >= 100 && v <= 20000) return v;
+    } catch (e) {}
+    return STARTING_FLEET;
+  }
+  var fleetChoice = readChoice();
+  function applyFleet(F) {
+    fleetChoice = F;
+    var sizes = tierSizesFor(F);
+    Object.keys(sizes).forEach(function (k) { if (TIERS[k]) TIERS[k].n = sizes[k]; });
+  }
+  function setFleet(F) {
+    applyFleet(F);
+    try { localStorage.setItem("vss-fleet", String(F)); } catch (e) {}
+  }
+  applyFleet(fleetChoice);
+  /* Actual satellites built at the current choice, summed over the catalogue. */
+  function fleetTotal() {
+    return (window.VSS_OBJECTS || []).reduce(function (a, o) { return a + tierCount(o); }, 0);
+  }
 
   /* Design life in years by environment class. Radiation is the killer at
      Jupiter; power decay is the killer in the deep. */
@@ -135,6 +176,8 @@
     NAV: NAV, TIERS: TIERS, DESIGN_LIFE: DESIGN_LIFE, ENV_LABEL: ENV_LABEL, CLS_LABEL: CLS_LABEL,
     AUD_PER_USD: AUD_PER_USD,
     fmt: fmt, fmtAud: fmtAud, fmtAudFull: fmtAudFull, fmtDate: fmtDate, fmtDur: fmtDur, fmtKm: fmtKm, fmtSpeed: fmtSpeed,
-    helioOrbitOf: helioOrbitOf, tierCount: tierCount, qs: qs, el: el, mountChrome: mountChrome
+    helioOrbitOf: helioOrbitOf, tierCount: tierCount, qs: qs, el: el, mountChrome: mountChrome,
+    STARTING_FLEET: STARTING_FLEET, tierSizesFor: tierSizesFor, fleetTotal: fleetTotal,
+    setFleet: setFleet, getFleet: function () { return fleetChoice; }
   };
 })();

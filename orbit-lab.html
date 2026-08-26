@@ -236,7 +236,7 @@ VSS.mountChrome("orbit-lab.html");
         texData = mctx.getImageData(0, 0, texW, texH).data;
         sph = null;
       };
-      imEl.src = curMap.file;
+      imEl.src = curMap.full || curMap.file;
     }
 
     document.getElementById("b-hill").textContent = VSS.fmtKm(bands.hillKm);
@@ -272,7 +272,7 @@ VSS.mountChrome("orbit-lab.html");
       : noField ? noField : "not measured") + "</dd>";
     rows += "<dt>Its map</dt><dd>" + (curMap
       ? "wearing humanity's real map of it (" + curMap.credit + ")"
-      : "no real map aboard this site yet, so the globe stays honestly plain rather than wearing an invented skin; for many of the smaller bodies no full map exists at all, and making them is the swarm's job") + "</dd>";
+      : "no real map aboard this site yet, so the globe wears a latitude and longitude grid rather than an invented skin; for many of the smaller bodies no full map exists anywhere, and making them is the swarm's job") + "</dd>";
 
     if (rot && rot.locked) {
       rows += "<dt>Stationary orbit</dt><dd>its day equals its lap of " + parent.name +

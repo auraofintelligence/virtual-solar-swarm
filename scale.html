@@ -68,7 +68,7 @@
     <div class="card">
       <h3>Would it disturb the solar system? The numbers to weigh:</h3>
       <dl class="kv" id="disturb-rows"></dl>
-      <p class="faint">The modelled design also carries two standing commitments at every scale: a funded end-of-life plan before any satellite activates, and orbit-only, sterilised operations at the ocean moons under planetary-protection rules.</p>
+      <p class="faint">The modelled design also carries two standing commitments at every scale: a settled end-of-life plan before any satellite activates, and orbit-only, sterilised operations at the ocean moons under planetary-protection rules.</p>
     </div>
     <div class="card">
       <h3>What would it give back? The numbers to weigh:</h3>
@@ -146,7 +146,7 @@ VSS.mountChrome("scale.html");
       { key: "picket", label: "Baseline pickets", each: a.tiers.picket, list: fundedPickets },
       { key: "promoted", label: "Promoted from the census", each: a.tiers.picket, list: promoted },
       { key: "int", label: "Interceptors", each: a.tiers.intercept, list: objs.filter(function (o) { return o.tier === "intercept" && a.per[o.id]; }) },
-      { key: "unfunded", label: "Waiting for funding", each: 0, list: unfunded }
+      { key: "unfunded", label: "Not yet crewed", each: 0, list: unfunded }
     ];
   }
   function renderWho() {
@@ -167,7 +167,7 @@ VSS.mountChrome("scale.html");
     if (!g || !g.list.length) { panel.style.display = "none"; return; }
     panel.style.display = "";
     panel.innerHTML = "<h3>" + g.label +
-      (g.key === "unfunded" ? ' <span class="dim small">· starting pickets not covered by these settings</span>'
+      (g.key === "unfunded" ? ' <span class="dim small">· starting-line targets that these settings leave without a crew</span>'
         : ' <span class="dim small">· ' + (g.key === "obs" ? VSS.fmt(g.each) + " satellites" : VSS.fmt(g.each) + " satellites each") + "</span>") + "</h3>" +
       '<div class="chip-row">' + g.list.map(function (o) {
         return '<a class="chip" style="text-decoration:none" href="object.html?id=' + o.id + '">' + o.name + "</a>";
@@ -184,6 +184,7 @@ VSS.mountChrome("scale.html");
     document.getElementById("p-picket-out").textContent = p.picketN + " each";
     document.getElementById("p-int-out").textContent = String(p.interceptors);
 
+    VSS.setFleet(F);
     var a = S.allocate(F, p);
     lastAlloc = a;
     var sys = S.systems(a);
@@ -194,12 +195,12 @@ VSS.mountChrome("scale.html");
     document.getElementById("s-data").textContent = VSS.fmt(sys.dataTBday, 0) + " TB";
 
     var picketLine = a.unfundedPickets > 0 && a.promoted > 0
-      ? VSS.fmt(a.promoted) + " census bodies reach station sooner than " + VSS.fmt(a.unfundedPickets) + " of the starting pickets, and take their seats"
+      ? VSS.fmt(a.promoted) + " census bodies reach station sooner than " + VSS.fmt(a.unfundedPickets) + " of the starting-line targets, and take their places"
       : a.unfundedPickets > 0
-        ? a.unfundedPickets + " of the starting picket targets wait for funding"
+        ? a.unfundedPickets + " of the starting-line targets go without a crew"
         : a.promoted > 0
-          ? "all starting pickets funded, plus " + VSS.fmt(a.promoted) + " census bodies given watchers of their own"
-          : "exactly the starting line-up of funded targets";
+          ? "every starting-line target crewed, plus " + VSS.fmt(a.promoted) + " census bodies given watchers of their own"
+          : "exactly the starting line-up";
     document.getElementById("alloc-note").textContent =
       "Under these settings: " + picketLine + ". " + (a.notes[0] || "") +
       " Steady state needs a launch roughly every " +
@@ -222,7 +223,7 @@ VSS.mountChrome("scale.html");
     renderWho();
   }
 
-  slider.value = fToSlider(1332);
+  slider.value = fToSlider(VSS.getFleet());
   writePolicy(S.DEFAULT_POLICY);
   ["F", "p-obs", "p-swarm", "p-enh", "p-picket", "p-int"].forEach(function (id) {
     document.getElementById(id).addEventListener("input", render);

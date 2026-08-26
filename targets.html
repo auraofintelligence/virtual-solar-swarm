@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Catalogue : Virtual Solar Swarm</title>
-<meta name="description" content="The Virtual Solar Swarm catalogue: the 200 funded targets and the wider census of named moons and small bodies, searchable, sortable and grouped.">
+<meta name="description" content="The Virtual Solar Swarm catalogue: the 200 targets with dedicated sensor packages and the wider census of named moons and small bodies, searchable, sortable and grouped.">
 <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🛰️</text></svg>">
 <link rel="stylesheet" href="assets/style.css">
 </head>
@@ -12,7 +12,7 @@
 <header id="site-header"></header>
 <main>
   <h1>The catalogue</h1>
-  <p class="lede">At the starting point, two hundred targets carry dedicated satellites; around them rides the census, every named moon of the giants and a deeper sweep of small worlds, watched by the host swarms rather than pickets of their own. No law fixes that split: <a href="scale.html">the scale dial</a> promotes the census as the budget grows. Search it, group it, argue with it. Click any row for the full dossier.</p>
+  <p class="lede">At the starting point, two hundred targets carry dedicated satellites; around them rides the census, every named moon of the giants and a deeper sweep of small worlds, watched by the host swarms rather than pickets of their own. No law fixes that split: <a href="scale.html">the scale dial</a> promotes the census as the fleet grows. Search it, group it, argue with it. Click any row for the full dossier.</p>
 
   <div class="controls">
     <input type="search" id="q" placeholder="Search names and notes…" aria-label="Search targets">
@@ -117,7 +117,7 @@ VSS.mountChrome("targets.html");
   st.addEventListener("click", function () {
     state.showSurvey = !state.showSurvey;
     st.setAttribute("aria-pressed", String(state.showSurvey));
-    st.textContent = state.showSurvey ? "Census entries shown" : "Funded 200 only";
+    st.textContent = state.showSurvey ? "Census entries shown" : "The original 200 only";
     render();
   });
 
@@ -194,7 +194,7 @@ VSS.mountChrome("targets.html");
         var funded = list.filter(function (o) { return o.tier !== "survey"; }).length;
         var closed = state.closed[g];
         return '<tr class="group-row" data-g="' + g.replace(/"/g, "&quot;") + '"><td colspan="8">' +
-          (closed ? "▸ " : "▾ ") + g + ' <span class="faint">· ' + list.length + (list.length === 1 ? " body" : " bodies") + ", " + funded + " funded</span></td></tr>" +
+          (closed ? "▸ " : "▾ ") + g + ' <span class="faint">· ' + list.length + (list.length === 1 ? " body" : " bodies") + ", " + funded + " with crews</span></td></tr>" +
           (closed ? "" : list.map(rowHtml).join(""));
       }).join("");
       tb.querySelectorAll(".group-row").forEach(function (tr) {
@@ -207,7 +207,7 @@ VSS.mountChrome("targets.html");
     }
     var funded = rows.filter(function (o) { return o.tier !== "survey"; }).length;
     document.getElementById("count-note").textContent =
-      rows.length + " of " + objs.length + " bodies shown (" + funded + " funded)";
+      rows.length + " of " + objs.length + " bodies shown (" + funded + " with crews of their own)";
     window.VSS_ART.autoPaint(tb);
   }
   render();

@@ -12,7 +12,7 @@
 <header id="site-header"></header>
 <main>
   <h1>Design the swarm that would watch the whole solar system</h1>
-  <p class="lede">This studio models a single idea: a standing crew of satellites around every interesting body in the solar system, keeping watch. It starts counting at 200 targets and 1,300 spacecraft, but no rule says those numbers: on <a href="scale.html">the scale page</a> the fleet total and the policy for spending it are dials in your hands, with the downstream numbers computed for you to weigh. Every page is a working model you can pull on.</p>
+  <p class="lede">Start from a count: the solar system already holds roughly two hundred moons and planets we know by name, and a long tail of smaller worlds behind them. Now assume the hard part is solved by someone else, that getting there is handled and your sensor packages can arrive. The question left is the good one: what would you send to each of them, and why? This studio is somewhere to answer that, and then to go beyond the two hundred. Every page is a working model you can pull on.</p>
 
   <div class="family-row" id="band"></div>
   <p class="faint" style="margin-top:.2rem">The Sun, the eight planets and our Moon, each wearing humanity's real map of it: NASA Blue Marble, Lunar Reconnaissance Orbiter, MESSENGER, Viking, Cassini and Voyager data. Bodies we have not mapped are drawn plain, in their measured colour, on the <a href="targets.html">catalogue</a>.</p>
@@ -22,12 +22,30 @@
   </div>
 
   <h2>The idea in one breath</h2>
-  <p>At the starting setting: two hundred funded targets, about the number of countries on Earth, each with a standing crew: a baseline picket of four satellites, one over each pole and one over each side, rising to dense swarms of fifty at busy worlds and a hundred wrapped right around the Sun, so every side of our star is watched at once. Around the funded core rides the census: every named moon of the giant planets and a deeper sweep of small worlds, watched by the host swarms until the dial funds them too. At this setting the model builds about 1,300 spacecraft, and every one of them eventually wears out, which is why replacement gets its own pages.</p>
+  <p>At the starting setting: two hundred targets carry a standing crew of their own: a baseline picket of four satellites, one over each pole and one over each side, so a body is seen from all angles at once, rising to dense swarms of fifty at busy worlds and a hundred wrapped right around the Sun. Around that first ring rides the census: every named moon of the giant planets and a deeper sweep of small worlds, watched by the host swarms until the dial gives them crews of their own. Set the dial below and the model builds whatever that comes to, and every one of those eventually wears out, which is why replacement gets its own pages.</p>
 
-  <div class="grid cols-4" id="live-stats">
+  <div class="card" id="chooser">
+    <h3>Your starting point</h3>
+    <p class="dim small">Nothing fixes the size of this thing. Move the dial and the whole site follows you: the catalogue, the fleet, the convoys, the replacement drumbeat. Your choice is remembered on this device.</p>
+    <p><label>Satellites all up <input type="range" id="fleet-dial" min="0" max="1000" value="500" style="width:min(420px,70vw); vertical-align:middle"></label>
+      <strong id="fleet-out" style="font-size:1.3rem"></strong></p>
+    <div class="chip-row">
+      <button class="chip" data-f="150">150</button>
+      <button class="chip" data-f="1332">1,332 (where this started counting)</button>
+      <button class="chip" data-f="4000">4,000</button>
+      <button class="chip" data-f="12000">12,000</button>
+    </div>
+    <dl class="kv" style="margin-top:.6rem">
+      <dt>Bodies with a crew of their own</dt><dd id="c-crewed">·</dd>
+      <dt>The Sun's ring</dt><dd id="c-sun">·</dd>
+      <dt>An ordinary picket</dt><dd id="c-picket">·</dd>
+      <dt>Replacements each year</dt><dd id="c-repl">·</dd>
+    </dl>
+    <p class="small"><a href="scale.html">Set the allocation policy too, on the scale page →</a></p>
+  </div>
+
+  <div class="grid cols-2" style="margin-top:1rem">
     <div class="card"><div class="stat" id="stat-objects">…</div><div class="stat-label">bodies in the catalogue</div></div>
-    <div class="card"><div class="stat" id="stat-funded">…</div><div class="stat-label">funded at the starting point</div></div>
-    <div class="card"><div class="stat" id="stat-fleet">…</div><div class="stat-label">satellites at the starting point</div></div>
     <div class="card"><div class="stat" id="stat-moons">…</div><div class="stat-label">moons in the catalogue</div></div>
   </div>
 
@@ -76,15 +94,38 @@ VSS.mountChrome("index.html");
 (function () {
   var objs = window.VSS_OBJECTS || [];
   document.getElementById("stat-objects").textContent = VSS.fmt(objs.length);
-  var fleet = 0, moons = 0, funded = 0;
-  objs.forEach(function (o) {
-    fleet += VSS.tierCount(o);
-    if (o.cls === "moon") moons++;
-    if (o.tier !== "survey") funded++;
+  document.getElementById("stat-moons").textContent = VSS.fmt(objs.filter(function (o) { return o.cls === "moon"; }).length);
+
+  // the dial: the reader's own choice, remembered and honoured site-wide
+  var dial = document.getElementById("fleet-dial");
+  var LO = Math.log(100), HI = Math.log(20000);
+  function dialToF() {
+    var F = Math.round(Math.exp(LO + (dial.value / 1000) * (HI - LO)) / 10) * 10;
+    if (Math.abs(F - VSS.STARTING_FLEET) <= 20) F = VSS.STARTING_FLEET;
+    return F;
+  }
+  function fToDial(F) { return Math.round(1000 * (Math.log(F) - LO) / (HI - LO)); }
+  function refresh() {
+    var F = dialToF();
+    VSS.setFleet(F);
+    var built = VSS.fleetTotal();
+    var crewed = objs.filter(function (o) { return VSS.tierCount(o) > 0; }).length;
+    var repl = objs.reduce(function (a, o) {
+      var n = VSS.tierCount(o), life = VSS.DESIGN_LIFE[o.env];
+      return a + (n && life ? n / life : 0);
+    }, 0);
+    document.getElementById("fleet-out").textContent = VSS.fmt(built);
+    document.getElementById("c-crewed").textContent = VSS.fmt(crewed) + " of " + objs.length;
+    document.getElementById("c-sun").textContent = VSS.fmt(VSS.TIERS.observatory.n) + " watchers around the Sun";
+    document.getElementById("c-picket").textContent = VSS.fmt(VSS.TIERS.picket.n) + " satellites per ordinary body";
+    document.getElementById("c-repl").textContent = VSS.fmt(repl, 0) + " built and sent each year to keep it whole";
+  }
+  dial.value = fToDial(VSS.getFleet());
+  dial.addEventListener("input", refresh);
+  document.querySelectorAll("#chooser .chip[data-f]").forEach(function (b) {
+    b.addEventListener("click", function () { dial.value = fToDial(+b.dataset.f); refresh(); });
   });
-  document.getElementById("stat-funded").textContent = VSS.fmt(funded);
-  document.getElementById("stat-fleet").textContent = VSS.fmt(fleet);
-  document.getElementById("stat-moons").textContent = VSS.fmt(moons);
+  refresh();
 
   // the family: real maps, each face linking to its dossier
   var lineup = ["sun", "mercury", "venus", "earth", "moon", "mars", "jupiter", "saturn", "uranus", "neptune"];

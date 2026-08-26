@@ -1,9 +1,10 @@
 /* Body portraits.
-   Bodies humanity has mapped are drawn as globes wearing their real map
-   (see data/maps.js for sources and credits). Everything else is drawn as a
-   plain disc in its real measured colour: no invented terrain, no invented
-   bands, no invented tails. The plainness is the honest signal that we do
-   not have a map of that world yet. */
+   Bodies humanity has mapped wear their real map (see data/maps.js for every
+   source and credit). Bodies we have not mapped are drawn as a lit sphere in
+   their measured colour under a latitude and longitude grid: never an
+   invented surface, and never a blank ball either. The grid is the honest
+   picture of what we know, and the missing maps are part of the case for
+   sending something. */
 (function () {
   "use strict";
 
@@ -61,7 +62,7 @@
         entry.waiting.splice(0).forEach(function (fn) { fn(); });
       };
       im.onerror = function () { entry.state = "failed"; entry.waiting.splice(0).forEach(function (fn) { fn(); }); };
-      im.src = maps[id].file;
+      im.src = maps[id].small || maps[id].full || maps[id].file;
     }
     if (entry.state === "loading" && onReady) entry.waiting.push(onReady);
     return null;
@@ -107,6 +108,47 @@
     ctx.drawImage(tmp, Math.round(cx - half), Math.round(cy - half));
   }
 
+  /* A body we have no map of: a lit sphere under a latitude and longitude
+     grid, so its shape, spin axis and scale still read. Honest and never
+     blank: this is what we actually know about it. */
+  function graticule(ctx, cx, cy, R) {
+    var LAT = [-60, -30, 0, 30, 60], STEP = 30;
+    function plot(pts, alphaMul, width) {
+      var run = [];
+      function flush() {
+        if (run.length > 1) {
+          ctx.beginPath();
+          run.forEach(function (q, i) { i ? ctx.lineTo(q[0], q[1]) : ctx.moveTo(q[0], q[1]); });
+          ctx.stroke();
+        }
+        run = [];
+      }
+      ctx.lineWidth = width;
+      pts.forEach(function (q) {
+        if (q[2] <= 0.02) { flush(); return; }
+        ctx.strokeStyle = "rgba(226,235,250," + (alphaMul * Math.min(1, q[2] * 2.2)).toFixed(3) + ")";
+        run.push([cx + R * q[0], cy - R * q[1]]);
+        if (run.length > 1) { flush(); run = [[cx + R * q[0], cy - R * q[1]]]; }
+      });
+      flush();
+    }
+    LAT.forEach(function (la) {
+      var r = Math.cos(la * Math.PI / 180), y = Math.sin(la * Math.PI / 180), pts = [];
+      for (var k = 0; k <= 72; k++) {
+        var lo = k / 72 * 2 * Math.PI;
+        pts.push([r * Math.sin(lo), y, r * Math.cos(lo)]);
+      }
+      plot(pts, la === 0 ? 0.5 : 0.26, la === 0 ? 1.1 : 0.9);
+    });
+    for (var lonDeg = 0; lonDeg < 180; lonDeg += STEP) {
+      var lo2 = lonDeg * Math.PI / 180, pts2 = [];
+      for (var k2 = 0; k2 <= 72; k2++) {
+        var la2 = (-90 + k2 / 72 * 180) * Math.PI / 180;
+        pts2.push([Math.cos(la2) * Math.sin(lo2), Math.sin(la2), Math.cos(la2) * Math.cos(lo2)]);
+      }
+      plot(pts2, 0.26, 0.9);
+    }
+  }
   function plainDisc(ctx, o, cx, cy, R) {
     var t = tintOf(o);
     var g = ctx.createRadialGradient(cx - R * 0.42, cy - R * 0.42, R * 0.1, cx, cy, R);
@@ -115,6 +157,12 @@
     g.addColorStop(1, css(darken(t, 92)));
     ctx.fillStyle = g;
     ctx.beginPath(); ctx.arc(cx, cy, R, 0, 7); ctx.fill();
+    if (R >= 11) {
+      ctx.save();
+      ctx.beginPath(); ctx.arc(cx, cy, R, 0, 7); ctx.clip();
+      graticule(ctx, cx, cy, R);
+      ctx.restore();
+    }
   }
 
   function ringHalf(ctx, cx, cy, R, ring, back) {
