@@ -43,7 +43,7 @@ The question was first put to a field of students in Kolhapur, Maharashtra, at t
 
 ## How it works
 
-No build step, no frameworks, no external requests. Plain HTML, CSS and JavaScript.
+No build step, no frameworks. Plain HTML, CSS and JavaScript. One external request: the Sun's dossier pulls the latest frames from NASA's Solar Dynamics Observatory, and falls back to the stored map if that feed cannot be reached. Everything else, including all thirty-two body maps and the three songs, is served from this repository.
 
 - `assets/astro.js` is the physics: Kepler propagation, Hohmann and faster tangential-burn transfers including hyperbolic, synodic windows, Hill spheres, orbit insertion, generalised stationary and sun-synchronous orbits, and the planar circular restricted three-body problem with numerically solved Lagrange points and RK4 integration.
 - `data/objects-*.js` are eleven reviewable data files that merge to 384 bodies. Two hundred carry dedicated crews; the rest are survey entries the host swarms watch.

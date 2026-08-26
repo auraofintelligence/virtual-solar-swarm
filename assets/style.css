@@ -255,3 +255,29 @@ hr.soft { border: 0; border-top: 1px solid var(--panel-edge); margin: 2rem 0; }
 /* ---------- provenance figures ---------- */
 figure.card img { width: 100%; height: auto; border-radius: 6px; display: block; margin-bottom: .6rem; }
 figure.card figcaption { line-height: 1.55; }
+
+/* ---------- the live Sun panel ---------- */
+.sun-live {
+  display: grid; grid-template-columns: auto 1fr; gap: 1.5rem;
+  align-items: center; clear: both; margin: 1.4rem 0;
+}
+.sun-live-frame { position: relative; width: min(340px, 74vw); flex: none; }
+.sun-live-frame img {
+  width: 100%; height: auto; display: block; border-radius: 50%;
+  background: #05070e;
+  box-shadow: 0 0 46px rgba(240, 140, 40, .28), 0 0 0 1px var(--panel-edge);
+}
+.sun-live-dot {
+  position: absolute; top: 6px; left: 50%; transform: translateX(-50%);
+  background: rgba(6, 9, 19, .82); color: #ff6b6b; border-radius: 999px;
+  padding: .12rem .7rem; font-size: .72rem; letter-spacing: .12em; text-transform: uppercase;
+}
+.sun-live-dot::before {
+  content: "●"; margin-right: .35em; animation: sunpulse 2.4s ease-in-out infinite;
+}
+@keyframes sunpulse { 0%, 100% { opacity: 1; } 50% { opacity: .25; } }
+.sun-live-words h3 { margin-top: 0; }
+@media (max-width: 700px) {
+  .sun-live { grid-template-columns: 1fr; justify-items: center; text-align: center; }
+  .sun-live .chip-row { justify-content: center; }
+}

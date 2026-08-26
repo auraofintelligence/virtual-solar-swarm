@@ -32,6 +32,67 @@
 <script src="assets/art.js"></script>
 <script>
 VSS.mountChrome("targets.html");
+
+/* The Sun is the one body on this site you can go and look at right now.
+   Latest frames from NASA's Solar Dynamics Observatory, refreshed while the
+   page is open. If the feed cannot be reached, the static map takes over. */
+function mountSunLive() {
+  var CHANNELS = [
+    { id: "0193", name: "Corona", note: "hot coronal plasma around 1 million degrees, and flare plasma far hotter" },
+    { id: "0171", name: "Coronal loops", note: "the quiet corona and its arching magnetic loops, around 600,000 degrees" },
+    { id: "0304", name: "Chromosphere", note: "the layer where prominences arc off the edge, around 50,000 degrees" },
+    { id: "0131", name: "Flares", note: "flaring regions at around 10 million degrees" },
+    { id: "HMIIC", name: "Visible surface", note: "the Sun as the eye would see it, sunspots and all" },
+    { id: "HMIB", name: "Magnetic field", note: "a magnetogram: white and black are opposite magnetic polarities" }
+  ];
+  var host = document.getElementById("sun-live");
+  if (!host) return;
+  var cur = 0, timer = null;
+
+  function url(ch) {
+    return "https://sdo.gsfc.nasa.gov/assets/img/latest/latest_1024_" + ch + ".jpg?t=" + Date.now();
+  }
+  function draw() {
+    var ch = CHANNELS[cur];
+    host.className = "card sun-live";
+    host.innerHTML =
+      '<div class="sun-live-frame"><img id="sun-live-img" alt="Latest image of the Sun from NASA Solar Dynamics Observatory, ' + ch.name + ' channel" src="' + url(ch.id) + '">' +
+      '<span class="sun-live-dot">live</span></div>' +
+      '<div class="sun-live-words"><h3>The Sun, right now</h3>' +
+      '<p class="dim small"><strong>' + ch.name + ".</strong> " + ch.note + "</p>" +
+      '<div class="chip-row">' + CHANNELS.map(function (c, i) {
+        return '<button class="chip" data-ch="' + i + '" aria-pressed="' + (i === cur) + '">' + c.name + "</button>";
+      }).join("") + "</div>" +
+      '<p class="faint" id="sun-live-stamp">Fetched ' + new Date().toLocaleTimeString("en-AU", { hour: "numeric", minute: "2-digit" }) +
+      '. The observatory posts fresh frames every few minutes; this panel refreshes itself while the page is open.</p>' +
+      '<p class="faint">Imagery: <a href="https://sdo.gsfc.nasa.gov/">NASA Solar Dynamics Observatory</a>, public domain. Everything else on this page is a model; this is the real thing.</p></div>';
+    host.querySelectorAll("[data-ch]").forEach(function (b) {
+      b.addEventListener("click", function () { cur = +b.dataset.ch; draw(); });
+    });
+    var img = document.getElementById("sun-live-img");
+    img.addEventListener("error", function () {
+      host.className = "card";
+      host.innerHTML = '<h3>The Sun, right now</h3><p class="dim small">The live feed from the NASA Solar Dynamics Observatory could not be reached from here. ' +
+        'It lives at <a href="https://sdo.gsfc.nasa.gov/">sdo.gsfc.nasa.gov</a>.</p>' +
+        '<div class="portrait-hero" style="float:none;margin:0"><canvas id="portrait" width="300" height="300"></canvas>' +
+        '<div class="faint">the stored map instead</div></div>';
+      var c = document.getElementById("portrait");
+      if (c && window.VSS_BY_ID.sun) window.VSS_ART.paint(c, window.VSS_BY_ID.sun);
+      if (timer) clearInterval(timer);
+    });
+  }
+  draw();
+  timer = setInterval(function () {
+    var img = document.getElementById("sun-live-img");
+    if (img) {
+      img.src = url(CHANNELS[cur].id);
+      var st = document.getElementById("sun-live-stamp");
+      if (st) st.textContent = "Refreshed " + new Date().toLocaleTimeString("en-AU", { hour: "numeric", minute: "2-digit" }) +
+        ". The observatory posts fresh frames every few minutes; this panel refreshes itself while the page is open.";
+    }
+  }, 240000);
+}
+
 (function () {
   var id = VSS.qs("id") || "enceladus";
   var o = window.VSS_BY_ID[id];
@@ -70,6 +131,7 @@ VSS.mountChrome("targets.html");
   var html = "";
   html += '<p class="faint"><a href="targets.html">← the catalogue</a></p>';
   var mapped = window.VSS_MAPS && window.VSS_MAPS[o.id];
+  if (!isSun)
   html += '<div class="portrait-hero"><canvas id="portrait" width="300" height="300"></canvas>' +
     '<div class="faint">' + (mapped
       ? "wearing its real map · " + mapped.credit
@@ -83,7 +145,7 @@ VSS.mountChrome("targets.html");
     html += '<p class="dim small">A census entry: no dedicated picket, but the host system\'s swarm and the survey sweeps keep it in view, and any of it is one decision away from a picket of its own.</p>';
   }
   html += '<p class="lede">' + (o.why || "") + "</p>";
-  if (isSun) html += '<div id="song-sun"></div>';
+  if (isSun) html += '<div id="sun-live"></div><div id="song-sun"></div>';
 
   html += '<div class="grid cols-2">';
   html += '<div class="card"><h3>Fast facts</h3><dl class="kv">' +
@@ -253,7 +315,9 @@ VSS.mountChrome("targets.html");
       blurb: "The Sun, singing for itself: a G-type flame drifting the Orion Arm, keeping the time we live by."
     });
   }
-  window.VSS_ART.paint(document.getElementById("portrait"), o);
+  if (isSun) mountSunLive();
+  var portraitEl = document.getElementById("portrait");
+  if (portraitEl) window.VSS_ART.paint(portraitEl, o);
   window.VSS_ART.autoPaint(page);
 })();
 </script>
