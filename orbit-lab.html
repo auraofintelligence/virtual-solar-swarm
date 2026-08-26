@@ -12,7 +12,7 @@
 <header id="site-header"></header>
 <main>
   <h1>Orbit lab</h1>
-  <p class="lede">Every body owns a bubble of space where its gravity is in charge, and inside it the body's own spin, shape and tilt carve out the special orbits. The scene is oriented to the real solar system, and every body starts the same way round: today's sunward line runs out to the left along the equator, so an axial tilt, a retrograde orbit or anything riding off the plane shows up straight away as a departure from that one line. The orbit plane rides at the body's true tilt, and the poles, and magnetic axis where one is measured, are drawn and named. Simple mode keeps orbits circular; advanced mode hands you true orbital mechanics.</p>
+  <p class="lede">Every body owns a bubble of space where its gravity is in charge, and inside it the body's own spin, shape and tilt carve out the special orbits. The scene is oriented to the real solar system, and every body starts the same way round: its spin axis standing up the screen like a globe on its stand, and today's sunward line running out to the left. How far that line sits off horizontal is the body's season, the Sun's angle above its equator, which is why Uranus and Pluto start so far from level. Against that one fixed reference an axial tilt, a retrograde orbit or anything riding off the plane shows up straight away. The orbit plane rides at the body's true tilt, and the poles, and magnetic axis where one is measured, are drawn and named. Simple mode keeps orbits circular; advanced mode hands you true orbital mechanics.</p>
 
   <div class="controls">
     <label>Target <select id="target"></select></label>
@@ -48,7 +48,7 @@
     <div>
       <div class="canvas-wrap"><canvas id="cv" width="560" height="620"></canvas><div class="canvas-hud" id="hud"></div></div>
       <div class="chip-row" style="margin-top:.5rem">
-        <button class="chip" id="btn-sunward"><span class="dot" style="background:#ffd76a"></span>sunward to the left</button>
+        <button class="chip" id="btn-sunward"><span class="dot" style="background:#ffd76a"></span>axis up, sunward left</button>
         <span class="chip" style="cursor:default"><span class="dot" style="background:#4cc9f0"></span>your orbit</span>
         <span class="chip" style="cursor:default"><span class="dot" style="background:#f0b429"></span>stationary ring</span>
         <span class="chip" style="cursor:default"><span class="dot" style="background:#4ade80"></span>steady limit</span>
@@ -137,18 +137,27 @@ VSS.mountChrome("orbit-lab.html");
   var W = cv.width, H = cv.height, CX = W / 2, CY = H / 2;
 
   // ---- camera ----
-  var yaw = 0.7, camTilt = 0.5, zoom = 1;
+  /* Pitch of the default view, radians above the body's equator. Near enough
+     side-on that the spin axis stands up the screen the way a globe on its
+     stand does: the pole sits 0.98 of a radius above centre, while the equator
+     still opens to about a fifth of its width so orbits read as ellipses
+     rather than collapsing into lines. */
+  var HOME_TILT = 1.35;
+  var yaw = 0.7, camTilt = HOME_TILT, zoom = 1;
 
   /* Swing the camera so today's sunward line runs out to the left along the
-     equator. Every body then starts from the same reference, so an axial tilt,
-     a retrograde orbit or anything riding off the plane reads immediately as a
+     equator. Every body then starts the same way round, so an axial tilt, a
+     retrograde orbit or anything riding off the plane reads immediately as a
      departure from that one line. The sunward vector is lifted out of the
      equator by the body's obliquity, so it is the equatorial part that is
-     pinned left; whatever is left over shows as height, which is the point. */
+     pinned left; what is left over shows as height, and with the axis standing
+     up that height is the body's season, the Sun's angle above its equator. */
   function faceSunward() {
     var ce = Math.cos((obliq || 0) * D2R);
     yaw = Math.PI - Math.atan2(Math.sin(sunAz) * ce, Math.cos(sunAz));
   }
+
+  function homeView() { faceSunward(); camTilt = HOME_TILT; }
   function fitKm() {
     var a = sliderToR(), e = advanced ? +eccS.value / 100 : 0;
     return Math.max(a * (1 + e) * 1.25, cur.radiusKm * 3, bands.minKm * 2);
@@ -230,7 +239,7 @@ VSS.mountChrome("orbit-lab.html");
     // today's sunward direction, from the body's actual heliocentric position
     var pos = A.helioPos(ho, A.daysSinceJ2000(new Date()));
     sunAz = Math.atan2(-pos.y, -pos.x);
-    faceSunward();
+    homeView();
     trail = []; M = 0; lambda = 0;
     // the real map, where humanity has one; nothing invented
     texData = null; sph = null;
@@ -584,7 +593,7 @@ VSS.mountChrome("orbit-lab.html");
   // ---- camera drag ----
   var dragging = false, lx = 0, ly = 0;
   document.getElementById("btn-sunward").addEventListener("click", function () {
-    faceSunward(); camTilt = 0.5; draw(0);   // 0 so the simulation clock does not jump
+    homeView(); draw(0);   // 0 so the simulation clock does not jump
   });
   cv.addEventListener("mousedown", function (e) { dragging = true; lx = e.clientX; ly = e.clientY; });
   window.addEventListener("mousemove", function (e) {
