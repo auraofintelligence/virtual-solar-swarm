@@ -23,10 +23,11 @@
     ["site-map.html", "Site map"]
   ];
 
-  /* The starting point: the tier sizes this study began counting with.
-     Nothing fixes them. The reader's own choice is remembered and every page
-     on the site reads from it. */
-  var STARTING_FLEET = 1332;
+  /* The fleet total the proportional laws below are pinned to, so that at this
+     total the tier sizes come out as the round numbers declared in TIERS. It is
+     the sum of that line-up, not a target. The reader's own choice is
+     remembered and every page on the site reads from it. */
+  var BASE_FLEET = 1332;
 
   var TIERS = {
     observatory: { label: "Solar observatory", n: 100, cssVar: "--tier-obs" },
@@ -37,10 +38,10 @@
     survey:      { label: "Survey entry",      n: 0,   cssVar: "--tier-survey" }
   };
 
-  /* Proportional laws pinned so the starting fleet reproduces the starting
-     line-up exactly. Same laws the scale page uses. */
+  /* Station sizes ride the fleet total in proportion. Same laws the scale
+     page uses. */
   function tierSizesFor(F) {
-    var g = F / STARTING_FLEET;
+    var g = F / BASE_FLEET;
     return {
       observatory: Math.max(1, Math.round(100 * g)),
       swarm: Math.max(1, Math.round(50 * g)),
@@ -55,7 +56,7 @@
       var v = parseInt(localStorage.getItem("vss-fleet"), 10);
       if (v >= 100 && v <= 20000) return v;
     } catch (e) {}
-    return STARTING_FLEET;
+    return BASE_FLEET;
   }
   var fleetChoice = readChoice();
   function applyFleet(F) {
@@ -198,7 +199,7 @@
     AUD_PER_USD: AUD_PER_USD,
     fmt: fmt, fmtAud: fmtAud, fmtAudFull: fmtAudFull, fmtDate: fmtDate, fmtDur: fmtDur, fmtKm: fmtKm, fmtSpeed: fmtSpeed,
     helioOrbitOf: helioOrbitOf, tierCount: tierCount, qs: qs, el: el, mountChrome: mountChrome, mountSong: mountSong,
-    STARTING_FLEET: STARTING_FLEET, tierSizesFor: tierSizesFor, fleetTotal: fleetTotal,
+    BASE_FLEET: BASE_FLEET, tierSizesFor: tierSizesFor, fleetTotal: fleetTotal,
     setFleet: setFleet, getFleet: function () { return fleetChoice; }
   };
 })();

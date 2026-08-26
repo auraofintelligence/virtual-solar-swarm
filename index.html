@@ -24,16 +24,16 @@
   <div id="song-home"></div>
 
   <h2>The idea in one breath</h2>
-  <p>At the starting setting: two hundred targets carry a standing crew of their own: a baseline picket of four satellites, one over each pole and one over each side, so a body is seen from all angles at once, rising to dense swarms of fifty at busy worlds and a hundred at the Sun, spread across <a href="object.html?id=sun">eleven different regimes</a> from divers inside the corona to listeners past the heliopause. Around that first tier rides the census: every named moon of the giant planets and a deeper sweep of small worlds, watched by the host swarms until the dial gives them crews of their own. Set the dial below and the model builds whatever that comes to, and every one of those eventually wears out, which is why replacement gets its own pages.</p>
+  <p>The fleet has a shape before it has a size. Most places get a picket: a small ring of satellites, one over each pole and one over each flank, so a body is seen from every side at once. Busy worlds get a swarm instead, thick enough to watch a plume or a storm change while it is changing. The Sun takes the largest gathering of all, spread across <a href="object.html?id=sun">eleven different regimes</a> from divers inside the corona to listeners past the heliopause. Behind them rides the census: every named moon of the giant planets and a deeper sweep of small worlds, watched from their host swarms until there are enough satellites to give them crews of their own. Set the dial and the model builds that shape at whatever number you choose. Every satellite in it eventually wears out, which is why replacement gets its own pages.</p>
 
   <div class="card" id="chooser">
-    <h3>Your starting point</h3>
-    <p class="dim small">Nothing fixes the size of this thing. Move the dial and the whole site follows you: the catalogue, the fleet, the convoys, the replacement drumbeat. Your choice is remembered on this device.</p>
+    <h3>Set the size</h3>
+    <p class="dim small">Move the dial and the whole site follows you: the catalogue, the fleet, the convoys, the replacement drumbeat. Your choice is remembered on this device.</p>
     <p><label>Satellites all up <input type="range" id="fleet-dial" min="0" max="1000" value="500" style="width:min(420px,70vw); vertical-align:middle"></label>
       <strong id="fleet-out" style="font-size:1.3rem"></strong></p>
     <div class="chip-row">
       <button class="chip" data-f="150">150</button>
-      <button class="chip" data-f="1332">1,332 (where this started counting)</button>
+      <button class="chip" data-f="1332">1,332</button>
       <button class="chip" data-f="4000">4,000</button>
       <button class="chip" data-f="12000">12,000</button>
     </div>
@@ -70,7 +70,7 @@
   </div>
 
   <h2>How a mission threads through</h2>
-  <p class="dim">The tools chain together. Pick a target from <a href="targets.html">the 200</a>, and its dossier hands you onward: the <a href="windows.html">next launch window</a> to get there, a <a href="orbit-lab.html">stable orbit</a> to park in, a <a href="builder.html">satellite build</a> that suits the destination, and the <a href="cadence.html">replacement drumbeat</a> that keeps its picket alive. Try <a href="object.html?id=enceladus">Enceladus</a>, <a href="object.html?id=psyche">Psyche</a> or <a href="object.html?id=sedna">Sedna</a> to see a full dossier.</p>
+  <p class="dim">The tools chain together. Pick a target from <a href="targets.html">the catalogue</a>, and its dossier hands you onward: the <a href="windows.html">next launch window</a> to get there, a <a href="orbit-lab.html">stable orbit</a> to park in, a <a href="builder.html">satellite build</a> that suits the destination, and the <a href="cadence.html">replacement drumbeat</a> that keeps its picket alive. Try <a href="object.html?id=enceladus">Enceladus</a>, <a href="object.html?id=psyche">Psyche</a> or <a href="object.html?id=sedna">Sedna</a> to see a full dossier.</p>
 </main>
 <footer id="site-footer"></footer>
 <script src="assets/astro.js"></script>
@@ -103,7 +103,7 @@ VSS.mountChrome("index.html");
   var LO = Math.log(100), HI = Math.log(20000);
   function dialToF() {
     var F = Math.round(Math.exp(LO + (dial.value / 1000) * (HI - LO)) / 10) * 10;
-    if (Math.abs(F - VSS.STARTING_FLEET) <= 20) F = VSS.STARTING_FLEET;
+    if (Math.abs(F - VSS.BASE_FLEET) <= 20) F = VSS.BASE_FLEET;
     return F;
   }
   function fToDial(F) { return Math.round(1000 * (Math.log(F) - LO) / (HI - LO)); }

@@ -1,24 +1,22 @@
-/* The scale: the fleet total and the allocation policy are both yours to set.
-   This file does arithmetic on the dials; it decides nothing.
-   Defaults are pinned so the starting point (fleet 1,332) reproduces the
-   original design exactly: 100 solar watchers, 50-strong swarms, 12-strong
-   enhanced pickets, 4-strong baselines, 200 funded targets. */
+/* Arithmetic for the scale page: given a fleet total and an allocation
+   policy, work out who gets what and what follows from it. Decides nothing. */
 (function () {
   "use strict";
 
-  /* The policy the study started with; the reset button restores this. */
-  var STARTING_POLICY = {
-    obsN: 100,          // satellites at the solar observatory, at the starting fleet
-    swarmN: 50,         // per priority-swarm world, at the starting fleet
+  /* Station sizes are quoted at VSS.BASE_FLEET and ride the total from there,
+     unless the reader switches that off. The reset button restores this set. */
+  var BASE_POLICY = {
+    obsN: 100,          // satellites at the solar observatory
+    swarmN: 50,         // per priority-swarm world
     enhN: 12,           // per enhanced-picket target
     picketN: 4,         // per baseline picket
     interceptors: 6,    // held ready across the visitor classes
-    scaleStations: true, // grow station sizes with the fleet, or hold them fixed
-    order: "shipped"    // the original 200 first, in the order the study began
+    scaleStations: true, // let station sizes ride the fleet total, or hold them fixed
+    order: "catalogue"  // dedicated tiers before the census
   };
-  /* What the page loads with: same numbers, but the fill order defers to
+  /* What the page loads with: same sizes, but the fill order defers to
      physics: whoever could soonest be on station gets crewed first. */
-  var DEFAULT_POLICY = Object.assign({}, STARTING_POLICY, { order: "windows" });
+  var DEFAULT_POLICY = Object.assign({}, BASE_POLICY, { order: "windows" });
 
   /* Days until a satellite could be on station: next launch window plus the
      cruise (capped at the site's 25-year fast-path convention), or the next
@@ -49,8 +47,8 @@
     return arrivalCache[o.id];
   }
 
-  /* Fill orders. "shipped" keeps the original
-     200 ahead of the census; every other order treats all bodies as one queue. */
+  /* Fill orders. "catalogue" keeps the dedicated tiers ahead of the census;
+     every other order treats all bodies as one queue. */
   function orderedQueue(order) {
     var objs = window.VSS_OBJECTS;
     var pickets = objs.filter(function (o) { return o.tier === "picket"; });
@@ -69,13 +67,13 @@
       var isNea = function (o) { return o.group === "Near-Earth"; };
       return merged.filter(isNea).sort(byArrival).concat(merged.filter(function (o) { return !isNea(o); }).sort(byArrival));
     }
-    return merged; // shipped
+    return merged; // catalogue order
   }
 
   function allocate(F, policy) {
     var p = policy || DEFAULT_POLICY;
-    var out = { F: F, per: {}, funded: 0, fleet: 0, notes: [] };
-    var grow = p.scaleStations ? F / 1332 : 1;
+    var out = { F: F, per: {}, crewed: 0, fleet: 0, notes: [] };
+    var grow = p.scaleStations ? F / VSS.BASE_FLEET : 1;
 
     var obsN = Math.max(1, Math.round(p.obsN * grow));
     var swarmN = Math.max(1, Math.round(p.swarmN * grow));
@@ -106,26 +104,26 @@
       var ids = Object.keys(out.per);
       var k = 0;
       while (budget > 0) { out.per[ids[k % ids.length]] += 1; budget--; out.fleet++; k++; }
-      out.notes.push("Every catalogued body is funded under this policy; the remainder thickens every station.");
+      out.notes.push("Every catalogued body has a crew under this policy; the remainder thickens every station.");
     }
 
-    out.funded = Object.keys(out.per).length;
+    out.crewed = Object.keys(out.per).length;
     out.tiers = { observatory: Math.min(obsN, F), swarm: swarmN, enhanced: enhN, picket: picketN, intercept: perInt };
     out.promoted = window.VSS_OBJECTS.filter(function (o) { return o.tier === "survey" && out.per[o.id]; }).length;
-    out.unfundedPickets = window.VSS_OBJECTS.filter(function (o) { return o.tier === "picket" && !out.per[o.id]; }).length;
+    out.uncrewedDedicated = window.VSS_OBJECTS.filter(function (o) { return o.tier === "picket" && !out.per[o.id]; }).length;
     return out;
   }
 
   /* Downstream quantities at a given allocation. Same teaching-grade models
      as the rest of the site; numbers, not judgements. */
   function systems(alloc) {
-    var repl = 0, inEarthSpace = 0, neaFunded = 0, neaTotal = 0, dataTB = 0, oceanWorlds = 0;
+    var repl = 0, inEarthSpace = 0, neaCrewed = 0, neaTotal = 0, dataTB = 0, oceanWorlds = 0;
     window.VSS_OBJECTS.forEach(function (o) {
       var n = alloc.per[o.id] || 0;
       var life = VSS.DESIGN_LIFE[o.env];
       if (n && life) repl += n / life;
       if (o.id === "earth" || o.parent === "earth") inEarthSpace += n;
-      if (o.group === "Near-Earth") { neaTotal++; if (n) neaFunded++; }
+      if (o.group === "Near-Earth") { neaTotal++; if (n) neaCrewed++; }
       if (n && (o.id === "europa" || o.id === "enceladus")) oceanWorlds += n;
       if (n) {
         var ho = VSS.helioOrbitOf(o);
@@ -139,7 +137,7 @@
       launchEveryDays: repl > 0 ? 365 / repl : Infinity,
       convoys: Math.ceil(alloc.fleet / 24),
       inEarthSpace: inEarthSpace,
-      neaFunded: neaFunded, neaTotal: neaTotal,
+      neaCrewed: neaCrewed, neaTotal: neaTotal,
       oceanWorlds: oceanWorlds,
       dataTBday: dataTB,
       kmCubedPerSat: VOL_40AU_KM3 / Math.max(alloc.fleet, 1),
@@ -149,5 +147,5 @@
     };
   }
 
-  window.VSS_SCALE = { DEFAULT_POLICY: DEFAULT_POLICY, STARTING_POLICY: STARTING_POLICY, allocate: allocate, systems: systems, orderedQueue: orderedQueue, arrivalOf: arrivalOf };
+  window.VSS_SCALE = { DEFAULT_POLICY: DEFAULT_POLICY, BASE_POLICY: BASE_POLICY, allocate: allocate, systems: systems, orderedQueue: orderedQueue, arrivalOf: arrivalOf };
 })();

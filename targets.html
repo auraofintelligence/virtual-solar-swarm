@@ -12,7 +12,7 @@
 <header id="site-header"></header>
 <main>
   <h1>The catalogue</h1>
-  <p class="lede">At the starting point, two hundred targets carry dedicated satellites; around them rides the census, every named moon of the giants and a deeper sweep of small worlds, watched by the host swarms rather than pickets of their own. No law fixes that split: <a href="scale.html">the scale dial</a> promotes the census as the fleet grows. Search it, group it, argue with it. Click any row for the full dossier.</p>
+  <p class="lede">Every body the site can send something to. Some carry dedicated satellites of their own; the rest ride as census entries, watched from a host swarm nearby rather than by a picket on the spot. Nothing fixes that split: <a href="scale.html">the fleet dial</a> promotes census bodies into crews of their own as the fleet grows, and the counts below follow your setting. Search it, group it, argue with it. Click any row for the full dossier.</p>
 
   <div class="controls">
     <input type="search" id="q" placeholder="Search names and notes…" aria-label="Search targets">
@@ -191,10 +191,10 @@ VSS.mountChrome("targets.html");
       });
       tb.innerHTML = seen.map(function (g) {
         var list = byG[g];
-        var funded = list.filter(function (o) { return o.tier !== "survey"; }).length;
+        var crewed = list.filter(function (o) { return o.tier !== "survey"; }).length;
         var closed = state.closed[g];
         return '<tr class="group-row" data-g="' + g.replace(/"/g, "&quot;") + '"><td colspan="8">' +
-          (closed ? "▸ " : "▾ ") + g + ' <span class="faint">· ' + list.length + (list.length === 1 ? " body" : " bodies") + ", " + funded + " with crews</span></td></tr>" +
+          (closed ? "▸ " : "▾ ") + g + ' <span class="faint">· ' + list.length + (list.length === 1 ? " body" : " bodies") + ", " + crewed + " with crews</span></td></tr>" +
           (closed ? "" : list.map(rowHtml).join(""));
       }).join("");
       tb.querySelectorAll(".group-row").forEach(function (tr) {
@@ -205,9 +205,9 @@ VSS.mountChrome("targets.html");
         });
       });
     }
-    var funded = rows.filter(function (o) { return o.tier !== "survey"; }).length;
+    var crewed = rows.filter(function (o) { return o.tier !== "survey"; }).length;
     document.getElementById("count-note").textContent =
-      rows.length + " of " + objs.length + " bodies shown (" + funded + " with crews of their own)";
+      rows.length + " of " + objs.length + " bodies shown (" + crewed + " with crews of their own)";
     window.VSS_ART.autoPaint(tb);
   }
   render();

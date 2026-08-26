@@ -99,7 +99,7 @@ function mountSunLive() {
   var o = window.VSS_BY_ID[id];
   var page = document.getElementById("page");
   if (!o) {
-    page.innerHTML = "<h1>No such target</h1><p>That id is not in the catalogue. Back to <a href='targets.html'>the 200</a>.</p>";
+    page.innerHTML = "<h1>No such target</h1><p>That id is not in the catalogue. Back to <a href='targets.html'>the catalogue</a>.</p>";
     return;
   }
   document.title = o.name + " : Virtual Solar Swarm";
@@ -305,9 +305,9 @@ function mountSunLive() {
   var kids = window.VSS_OBJECTS.filter(function (k) { return k.parent === o.id; });
   if (kids.length) {
     kids.sort(function (a, b) { return (a.orbit.aKm || 0) - (b.orbit.aKm || 0); });
-    var funded = kids.filter(function (k) { return k.tier !== "survey"; }).length;
+    var crewed = kids.filter(function (k) { return k.tier !== "survey"; }).length;
     html += '<h2 style="clear:both">In this system</h2>' +
-      '<p class="dim small">' + kids.length + " catalogued companions, " + funded + " with dedicated watchers; the rest are census entries covered by the system swarm.</p>" +
+      '<p class="dim small">' + kids.length + " catalogued companions, " + crewed + " with dedicated watchers; the rest are census entries covered by the system swarm.</p>" +
       '<div class="table-wrap"><table><thead><tr><th></th><th>Name</th><th class="num">Distance</th><th class="num">Radius (km)</th><th>Tier</th><th>Note</th></tr></thead><tbody>' +
       kids.map(function (k) {
         return "<tr><td class='thumb-cell'><canvas class='thumb' width='42' height='42' data-obj='" + k.id + "'></canvas></td>" +
