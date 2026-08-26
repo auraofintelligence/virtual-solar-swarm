@@ -17,6 +17,7 @@
     ["network.html", "Network"],
     ["fleet.html", "Fleet"],
     ["cadence.html", "Cadence"],
+    ["origins.html", "Origins"],
     ["about.html", "About"],
     ["site-map.html", "Site map"]
   ];

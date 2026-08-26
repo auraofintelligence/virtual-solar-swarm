@@ -12,7 +12,11 @@
 
 Virtual Solar Swarm starts from a question with the hard part removed. The solar system already holds roughly two hundred moons and planets we know by name, and a long tail of smaller worlds behind them. Assume getting there is solved by someone else, and that a sensor package can arrive anywhere. The question left is the good one: **what would you send to each of them, and why?** And then, what lies beyond the two hundred?
 
-The site turns that question into sixteen working models. Every number is a dial rather than a verdict, and the reader's own choices carry across the whole site.
+The site turns that question into seventeen working models. Every number is a dial rather than a verdict, and the reader's own choices carry across the whole site.
+
+## Where the question came from
+
+The question was first put to a field of students in Kolhapur, Maharashtra, at the inauguration of the SDNx Innovation Lab in June 2019: imagine and design the satellite sensor packages that would monitor the two hundred most interesting objects in the solar system, assuming the space industry solves transport and cost. [`origins.html`](https://auraofintelligence.github.io/virtual-solar-swarm/origins.html) records that day and the [Space Development Nexus](https://spacedevelopmentnexus.com) work around it. The people photographed there do not endorse this study; this studio is a separate, independent design exercise built years later.
 
 ## The pages
 
@@ -33,6 +37,7 @@ The site turns that question into sixteen working models. Every number is a dial
 | `network.html` | Live light lag, conjunction routing, trunk capacity and the control ladder |
 | `fleet.html` | Where the satellites end up, neighbourhood by neighbourhood |
 | `cadence.html` | Replacement drumbeat and factory-pace model |
+| `origins.html` | Where the question came from: the 2019 talk in Kolhapur and the Space Development Nexus work around it |
 | `about.html` | Every approximation named, imagery credits, the music and the licence |
 | `site-map.html` | Every page, grouped by what it is for |
 
