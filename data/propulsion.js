@@ -1,6 +1,6 @@
 /* The rides: launch stages for climbing Earth's gravity well, and cruise
    systems for the interplanetary road. Two different problems, two different
-   machines. Numbers are round engineering figures; status lines are honest. */
+   machines. Numbers are round engineering figures; status lines give flight heritage. */
 
 window.VSS_LAUNCHERS = [
   { id: "heavy", name: "Heavy reusable lifter", propellant: "methane and liquid oxygen",

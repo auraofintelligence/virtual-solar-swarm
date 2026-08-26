@@ -49,7 +49,7 @@
     return arrivalCache[o.id];
   }
 
-  /* Transparent fill orders; no hidden scoring. "shipped" keeps the original
+  /* Fill orders. "shipped" keeps the original
      200 ahead of the census; every other order treats all bodies as one queue. */
   function orderedQueue(order) {
     var objs = window.VSS_OBJECTS;

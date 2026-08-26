@@ -2,7 +2,7 @@
 
 This site draws every body with real mission imagery wherever a global map exists
 and can be carried here. Bodies without one are drawn as a lit sphere under a
-latitude and longitude grid, never an invented surface.
+latitude and longitude grid, which shows size and orientation only.
 
 ## Carried in this repo
 

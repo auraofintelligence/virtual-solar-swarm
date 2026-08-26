@@ -1,4 +1,4 @@
-/* One entry that is honestly not like the others. */
+/* Not a discovery: a hypothesis, listed as one. */
 window.VSS_PARTS = window.VSS_PARTS || {};
 window.VSS_PARTS.hypothesis = [
   { id: "planet-nine", name: "Planet Nine (hypothesised)", cls: "hypothesis", group: "Hypotheses", parent: null, tier: "survey",

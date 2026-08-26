@@ -1,11 +1,8 @@
-/* Real global maps: every body humanity has actually mapped and that this
-   site carries. Everything here is genuine mission imagery, credited below
-   and again on the about page. Nothing is an invented surface.
-   Two sizes: `small` (512x256) for portraits and thumbnails, `full`
-   (1024x512) for the orbit lab's globe. Both are loaded only when a body is
-   actually drawn. Bodies missing from this list are drawn as a lit sphere
-   under a latitude and longitude grid, which is the honest picture: we know
-   where they are and how big they are, not what their faces look like. */
+/* Global surface maps from mission imagery, credited per body and on the
+   about page. Two sizes: `small` (512x256) for portraits and thumbnails,
+   `full` (1024x512) for the orbit lab globe. Both load only when a body is
+   drawn. Bodies absent from this list render as a lit sphere with a latitude
+   and longitude grid, showing size and orientation only. */
 window.VSS_MAPS = {
   sun: { small: "assets/maps/small/sun.jpg", full: "assets/maps/sun.jpg", credit: "solar imagery assembled by Solar System Scope from NASA data, CC BY 4.0" },
   mercury: { small: "assets/maps/small/mercury.jpg", full: "assets/maps/mercury.jpg", credit: "NASA MESSENGER mission data, assembled by Solar System Scope, CC BY 4.0" },

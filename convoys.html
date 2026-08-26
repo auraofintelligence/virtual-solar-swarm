@@ -98,7 +98,7 @@ VSS.mountChrome("convoys.html");
 
   /* Distance bands for everything else. A convoy tours one band: it brakes
      once into the band and then spends its own small delta-v moving between
-     neighbours, which is why batching by distance is the honest unit. */
+     neighbours, which is why distance is the unit that matters here. */
   var BANDS = [
     { lo: 0, hi: 1.6, label: "Near-Earth rocks", note: "the cheapest targets in the solar system, some reachable on almost any date" },
     { lo: 1.6, hi: 4.0, label: "Main belt, inner tour", note: "includes Ceres and Vesta, the belt's two big ones" },
@@ -191,7 +191,7 @@ VSS.mountChrome("convoys.html");
     var syn = A.synodicYears(1, A.periodYearsOf(ho));
     var wins = A.windowsForTransfer(earth, ho, now, 1, t);
     out.windowTxt = wins.length ? VSS.fmtDate(wins[0]) : "any time";
-    // the cheapest path is silly slow far out; say so plainly instead of capping silently
+    // the cheapest path is absurdly slow far out; state both rather than capping silently
     if (t.tofYears > 20) {
       var fast = A.fastTransfer(1, aAU, 6);
       out.cruiseTxt = VSS.fmtDur(Math.min(fast.tofYears, 40)) + " on a hard push";

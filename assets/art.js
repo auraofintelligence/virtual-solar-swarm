@@ -1,14 +1,12 @@
 /* Body portraits.
-   Bodies humanity has mapped wear their real map (see data/maps.js for every
-   source and credit). Bodies we have not mapped are drawn as a lit sphere in
-   their measured colour under a latitude and longitude grid: never an
-   invented surface, and never a blank ball either. The grid is the honest
-   picture of what we know, and the missing maps are part of the case for
-   sending something. */
+   Bodies with a published global map wear it (see data/maps.js for every
+   source and credit). The rest are drawn as a lit sphere in their measured
+   colour under a latitude and longitude grid, which shows size and
+   orientation only. No surface detail is generated. */
 (function () {
   "use strict";
 
-  /* Measured colours. These come from real observation, not invention. */
+  /* Measured colours, from published observation. */
   var TINT = {
     sun: [255, 186, 64], mercury: [154, 144, 134], venus: [232, 202, 148], earth: [88, 140, 214],
     mars: [198, 108, 66], jupiter: [214, 176, 138], saturn: [222, 198, 152], uranus: [156, 204, 218],

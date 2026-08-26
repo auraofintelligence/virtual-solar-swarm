@@ -66,7 +66,7 @@ function mountSunLive() {
       }).join("") + "</div>" +
       '<p class="faint" id="sun-live-stamp">Fetched ' + new Date().toLocaleTimeString("en-AU", { hour: "numeric", minute: "2-digit" }) +
       '. The observatory posts fresh frames every few minutes; this panel refreshes itself while the page is open.</p>' +
-      '<p class="faint">Imagery: <a href="https://sdo.gsfc.nasa.gov/">NASA Solar Dynamics Observatory</a>, public domain. Everything else on this page is a model; this is the real thing.</p></div>';
+      '<p class="faint">Imagery: <a href="https://sdo.gsfc.nasa.gov/">NASA Solar Dynamics Observatory</a>, public domain. The rest of this page is modelled; this is live.</p></div>';
     host.querySelectorAll("[data-ch]").forEach(function (b) {
       b.addEventListener("click", function () { cur = +b.dataset.ch; draw(); });
     });
@@ -136,7 +136,7 @@ function mountSunLive() {
   html += '<div class="portrait-hero"><canvas id="portrait" width="300" height="300"></canvas>' +
     '<div class="faint">' + (mapped
       ? "wearing its real map · " + mapped.credit
-      : "no map of it aboard this site; drawn as a lit sphere under a latitude and longitude grid rather than an invented surface") +
+      : "no surface map available; drawn as a lit sphere with a latitude and longitude grid") +
     "</div></div>";
   html += "<h1>" + o.name + "</h1>";
   html += '<p><span class="badge t-' + o.tier + '">' + VSS.TIERS[o.tier].label +
@@ -297,7 +297,7 @@ function mountSunLive() {
         '<p class="dim small mission-finding"><strong>The hard part.</strong> ' + st.hard + "</p>" +
         '<p class="small"><a href="' + st.link + '">' + st.precedent + " &rarr;</a></p></div>";
     }).join("") + "</div>";
-    html += '<p class="faint">The split above is one way to divide attention, not a derived optimum, and it lives in a data file so it can be changed. The list of regimes is not a matter of opinion: every one has been flown, is being built, or has a published mission study behind it.</p>';
+    html += '<p class="faint">The split above is one way to divide attention, not a derived optimum. Every regime listed has been flown, is being built, or has a published mission study behind it.</p>';
     html += '<p class="faint">The wilder end of the solar-cycle question, micro-novas and galactic current sheets included, is gathered separately in <a href="https://auraofintelligence.github.io/micronova-and-excursions/">Micronova and Excursions</a>: an evidence ledger rather than a verdict.</p>';
   }
 

@@ -6,7 +6,7 @@
 
 🤝🔷 **A Luke × Claude build.** Created by Luke Nathan Hayes ([auraofintelligence](https://github.com/auraofintelligence)) and Claude (Fable 5), August 2026. Not a Codex build.
 
-> This is an evolving choose-your-own science adventure, made to help open up the solar system for the civic space stewards of Earth and the solar system. Nothing described here has been built, launched or funded, and this repository does not claim otherwise.
+> This is an evolving choose-your-own science adventure, made to help open up the solar system for the civic space stewards of Earth and the solar system. Nothing described here has been built, launched or funded.
 
 ## What this project is
 
@@ -57,9 +57,9 @@ Run it locally with any static server, for example:
 python -m http.server 4321
 ```
 
-## Honesty notes
+## Data and limits
 
-Orbital elements, radii, masses, rotation rates, oblateness, axial tilts and magnetic tilts are real published values, rounded. The maps are real mission imagery, credited in [`data/maps.js`](data/maps.js) and on the about page; bodies without a map are drawn under a latitude and longitude grid rather than an invented surface. [`docs/MAP-SOURCES.md`](docs/MAP-SOURCES.md) records where each map came from and where to find the ones still missing.
+Orbital elements, radii, masses, rotation rates, oblateness, axial tilts and magnetic tilts are real published values, rounded. The maps are real mission imagery, credited in [`data/maps.js`](data/maps.js) and on the about page; bodies without a map are drawn under a latitude and longitude grid. [`docs/MAP-SOURCES.md`](docs/MAP-SOURCES.md) records where each map came from and where to find the ones still missing.
 
 The satellites, buses, instruments, timelines, design lives and cost figures are design fiction grounded in current public technology. Costs are engineering estimates for comparison, not a budget anyone has raised. Prices show in AUD (converted at 1 USD = A$1.55, indicative, August 2026) with USD alongside. The physics is teaching-grade throughout: right enough to compare options and plan shapes, not to fly a spacecraft. The about page lists every approximation by name.
 
