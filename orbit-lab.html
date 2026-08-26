@@ -12,7 +12,7 @@
 <header id="site-header"></header>
 <main>
   <h1>Orbit lab</h1>
-  <p class="lede">Every body owns a bubble of space where its gravity is in charge, and inside it the body's own spin, shape and tilt carve out the special orbits. The scene is oriented to the real solar system: the sunward arrow points where the Sun is today, the orbit plane rides at the body's true tilt, and the poles, and magnetic axis where one is measured, are drawn and named. Simple mode keeps orbits circular; advanced mode hands you true orbital mechanics.</p>
+  <p class="lede">Every body owns a bubble of space where its gravity is in charge, and inside it the body's own spin, shape and tilt carve out the special orbits. The scene is oriented to the real solar system, and every body starts the same way round: today's sunward line runs out to the left along the equator, so an axial tilt, a retrograde orbit or anything riding off the plane shows up straight away as a departure from that one line. The orbit plane rides at the body's true tilt, and the poles, and magnetic axis where one is measured, are drawn and named. Simple mode keeps orbits circular; advanced mode hands you true orbital mechanics.</p>
 
   <div class="controls">
     <label>Target <select id="target"></select></label>
@@ -48,7 +48,7 @@
     <div>
       <div class="canvas-wrap"><canvas id="cv" width="560" height="620"></canvas><div class="canvas-hud" id="hud"></div></div>
       <div class="chip-row" style="margin-top:.5rem">
-        <span class="chip" style="cursor:default"><span class="dot" style="background:#ffd76a"></span>sunward today</span>
+        <button class="chip" id="btn-sunward"><span class="dot" style="background:#ffd76a"></span>sunward to the left</button>
         <span class="chip" style="cursor:default"><span class="dot" style="background:#4cc9f0"></span>your orbit</span>
         <span class="chip" style="cursor:default"><span class="dot" style="background:#f0b429"></span>stationary ring</span>
         <span class="chip" style="cursor:default"><span class="dot" style="background:#4ade80"></span>steady limit</span>
@@ -138,6 +138,17 @@ VSS.mountChrome("orbit-lab.html");
 
   // ---- camera ----
   var yaw = 0.7, camTilt = 0.5, zoom = 1;
+
+  /* Swing the camera so today's sunward line runs out to the left along the
+     equator. Every body then starts from the same reference, so an axial tilt,
+     a retrograde orbit or anything riding off the plane reads immediately as a
+     departure from that one line. The sunward vector is lifted out of the
+     equator by the body's obliquity, so it is the equatorial part that is
+     pinned left; whatever is left over shows as height, which is the point. */
+  function faceSunward() {
+    var ce = Math.cos((obliq || 0) * D2R);
+    yaw = Math.PI - Math.atan2(Math.sin(sunAz) * ce, Math.cos(sunAz));
+  }
   function fitKm() {
     var a = sliderToR(), e = advanced ? +eccS.value / 100 : 0;
     return Math.max(a * (1 + e) * 1.25, cur.radiusKm * 3, bands.minKm * 2);
@@ -219,6 +230,7 @@ VSS.mountChrome("orbit-lab.html");
     // today's sunward direction, from the body's actual heliocentric position
     var pos = A.helioPos(ho, A.daysSinceJ2000(new Date()));
     sunAz = Math.atan2(-pos.y, -pos.x);
+    faceSunward();
     trail = []; M = 0; lambda = 0;
     // the real map, where humanity has one; nothing invented
     texData = null; sph = null;
@@ -404,7 +416,10 @@ VSS.mountChrome("orbit-lab.html");
     ctx.strokeStyle = "#ffd76a"; ctx.lineWidth = 1.6;
     ctx.beginPath(); ctx.moveTo(spA.x, spA.y); ctx.lineTo(spB.x, spB.y); ctx.stroke();
     ctx.fillStyle = "#ffd76a"; ctx.font = "12px system-ui, sans-serif";
-    ctx.fillText("☀ sunward", spB.x + 5, spB.y - 4);
+    // the line runs out to the left, so keep the label outboard of its end
+    var swLabel = "☀ sunward";
+    var swX = spB.x < CX ? spB.x - 5 - ctx.measureText(swLabel).width : spB.x + 5;
+    ctx.fillText(swLabel, Math.max(2, swX), spB.y - 4);
 
     // toward the parent, for tidally locked moons the fixed near-side direction
     if (parent) {
@@ -568,6 +583,9 @@ VSS.mountChrome("orbit-lab.html");
 
   // ---- camera drag ----
   var dragging = false, lx = 0, ly = 0;
+  document.getElementById("btn-sunward").addEventListener("click", function () {
+    faceSunward(); camTilt = 0.5; draw(0);   // 0 so the simulation clock does not jump
+  });
   cv.addEventListener("mousedown", function (e) { dragging = true; lx = e.clientX; ly = e.clientY; });
   window.addEventListener("mousemove", function (e) {
     if (!dragging) return;
