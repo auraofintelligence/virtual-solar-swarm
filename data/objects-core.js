@@ -5,7 +5,7 @@ window.VSS_PARTS = window.VSS_PARTS || {};
 window.VSS_PARTS.core = [
   { id: "sun", name: "The Sun", cls: "star", group: "Star", parent: null, tier: "observatory",
     orbit: null, radiusKm: 695700, massKg: 1.989e30,
-    why: "The engine of everything here; a hundred-satellite ring around it would watch every side of our star at once." },
+    why: "The engine of everything here; watching it properly takes a layered fleet, from divers inside the corona to listeners past the heliopause." },
   { id: "mercury", name: "Mercury", cls: "planet", group: "Planets", parent: null, tier: "enhanced",
     orbit: { aAU: 0.38710, e: 0.20563, iDeg: 7.005, omDeg: 48.331, wDeg: 29.125, M0Deg: 174.795, periodYears: 0.2408 },
     radiusKm: 2439.7, massKg: 3.301e23,

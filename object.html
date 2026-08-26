@@ -27,6 +27,7 @@
 <script src="data/objects.js"></script>
 <script src="data/sensors.js"></script>
 <script src="data/buses.js"></script>
+<script src="data/solar-stations.js"></script>
 <script src="assets/core.js"></script>
 <script src="data/maps.js"></script>
 <script src="assets/art.js"></script>
@@ -160,11 +161,8 @@ function mountSunLive() {
   // ----- stable orbits -----
   html += '<div class="card"><h3>Stable orbits around it</h3>';
   if (isSun) {
-    html += '<p class="dim small">You do not orbit close around the Sun so much as choose your ring. The design study parks its hundred watchers in four kinds of places:</p>' +
-      '<dl class="kv"><dt>L1 line</dt><dd>1.5 million km sunward of Earth, the classic early-warning post</dd>' +
-      "<dt>L4 and L5</dt><dd>60 degrees ahead of and behind Earth, for side-on views of storms aimed at us</dd>" +
-      "<dt>Polar ring</dt><dd>high-inclination orbits that see the solar poles no Earth telescope can</dd>" +
-      "<dt>Far side</dt><dd>stations opposite Earth, closing the last blind spot</dd></dl>";
+    html += '<p class="dim small">Not a ring. Watching a star properly means several different regimes at once, each seeing something the others cannot, from divers inside the corona to listeners out past the edge of the heliosphere. Set out below, with the share of your solar observatory each would take.</p>';
+    html += '<p class="small"><a href="#stations">The eleven station types &darr;</a></p>';
   } else if (isInterstellar) {
     html += '<p class="dim small">There is no stable orbit to be had: the visitor is moving too fast for anything to hold it. The plan here is an interceptor pair launched onto a crossing path, one good flyby each, instruments running the whole way past.</p>';
   } else {
@@ -283,6 +281,23 @@ function mountSunLive() {
       '<li><a href="https://ssd.jpl.nasa.gov/horizons/">JPL Horizons</a>: the ephemeris this site orbits should be checked against</li>' +
       "</ul></div></div>";
     html += '<p class="small"><a href="sun-watchers.html">Everything that has ever watched the Sun, and what is being built next &rarr;</a></p>';
+
+    // ----- the station architecture -----
+    var stations = window.VSS_SOLAR_STATIONS || [];
+    var obsN = VSS.tierCount(o);
+    html += '<h2 id="stations" style="clear:both">Where the watchers would actually sit</h2>';
+    html += '<p class="dim small">A star is not watched from one place. These are the regimes a solar observatory would spread across, each with what it alone can see, what makes it hard, and something real that has flown there. Counts follow the ' +
+      VSS.fmt(obsN) + ' watchers you have the observatory set to; change that on <a href="index.html">the home page</a>.</p>';
+    html += '<div class="grid cols-2">' + stations.map(function (st) {
+      var n = Math.max(1, Math.round(obsN * st.share));
+      return '<div class="card"><div class="mission-head"><h3>' + st.name + '</h3>' +
+        '<span class="st st-operating">' + VSS.fmt(n) + ' of ' + VSS.fmt(obsN) + "</span></div>" +
+        '<p class="mission-years">' + st.where + "</p>" +
+        '<p class="dim small">' + st.sees + "</p>" +
+        '<p class="dim small mission-finding"><strong>The hard part.</strong> ' + st.hard + "</p>" +
+        '<p class="small"><a href="' + st.link + '">' + st.precedent + " &rarr;</a></p></div>";
+    }).join("") + "</div>";
+    html += '<p class="faint">Shares are a studio assumption, not a derived optimum: they are one opinion about how to split attention, and they are in the data file for anyone who wants to argue with them. What is not an assumption is the list itself. Every regime here has been flown, is being built, or has a published mission study behind it.</p>';
     html += '<p class="faint">The wilder end of the solar-cycle question, micro-novas and galactic current sheets included, is gathered separately in <a href="https://auraofintelligence.github.io/micronova-and-excursions/">Micronova and Excursions</a>: an evidence ledger rather than a verdict.</p>';
   }
 
