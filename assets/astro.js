@@ -10,6 +10,7 @@
   var DAY_S = 86400;
   var YEAR_D = 365.25;
   var J2000_MS = Date.UTC(2000, 0, 1, 12, 0, 0);
+  var J2000_JD = 2451545.0;
   var D2R = Math.PI / 180;
 
   function daysSinceJ2000(date) { return (date.getTime() - J2000_MS) / 86400000; }
@@ -40,18 +41,49 @@
     return Math.pow(orbit.aAU, 1.5);
   }
 
+  /* Elements are quoted at an epoch. orbit.epochJD names it; without one they
+     are read at J2000, which is how the planets are tabulated. Days from that
+     epoch to tDays (itself measured from J2000). */
+  function sinceEpoch(orbit, tDays) {
+    return tDays - (orbit.epochJD ? orbit.epochJD - J2000_JD : 0);
+  }
+
+  /* Elements at a moment. orbit.rates, where present, carries the secular
+     drift per Julian century (JPL's tabulated rates for the major planets);
+     small bodies carry none and are treated as fixed. */
+  function elementsAt(orbit, dt) {
+    var r = orbit.rates;
+    if (!r) return orbit;
+    var T = dt / 36525;
+    return {
+      aAU: orbit.aAU + (r.aAU || 0) * T,
+      e: orbit.e + (r.e || 0) * T,
+      iDeg: (orbit.iDeg || 0) + (r.iDeg || 0) * T,
+      omDeg: (orbit.omDeg || 0) + (r.omDeg || 0) * T,
+      wDeg: (orbit.wDeg || 0) + (r.wDeg || 0) * T,
+      M0Deg: orbit.M0Deg,
+      periodYears: orbit.periodYears
+    };
+  }
+
+  /* Mean anomaly in degrees at tDays since J2000. */
+  function meanAnomaly(orbit, tDays) {
+    var P = periodYearsOf(orbit) * YEAR_D;
+    var M = ((orbit.M0Deg || 0) + 360 * (sinceEpoch(orbit, tDays) / P)) % 360;
+    return M < 0 ? M + 360 : M;
+  }
+
   /* Heliocentric position at tDays since J2000. Returns {x,y,z} in AU
      (ecliptic frame, x toward the vernal equinox). */
   function helioPos(orbit, tDays) {
     if (orbit.hyperbolic) return null;
-    var P = periodYearsOf(orbit) * YEAR_D;
-    var M = ((orbit.M0Deg || 0) + 360 * (tDays / P)) % 360;
-    if (M < 0) M += 360;
-    var E = solveKepler(M * D2R, orbit.e);
-    var a = orbit.aAU, e = orbit.e;
+    var dt = sinceEpoch(orbit, tDays);
+    var el = elementsAt(orbit, dt);
+    var E = solveKepler(meanAnomaly(orbit, tDays) * D2R, el.e);
+    var a = el.aAU, e = el.e;
     var xo = a * (Math.cos(E) - e);
     var yo = a * Math.sqrt(1 - e * e) * Math.sin(E);
-    var w = (orbit.wDeg || 0) * D2R, om = (orbit.omDeg || 0) * D2R, i = (orbit.iDeg || 0) * D2R;
+    var w = (el.wDeg || 0) * D2R, om = (el.omDeg || 0) * D2R, i = (el.iDeg || 0) * D2R;
     var cw = Math.cos(w), sw = Math.sin(w), co = Math.cos(om), so = Math.sin(om), ci = Math.cos(i), si = Math.sin(i);
     return {
       x: (cw * co - sw * so * ci) * xo + (-sw * co - cw * so * ci) * yo,
@@ -62,8 +94,8 @@
 
   /* Mean ecliptic longitude, degrees, linear in time. */
   function meanLongitude(orbit, tDays) {
-    var P = periodYearsOf(orbit) * YEAR_D;
-    var L = (orbit.omDeg || 0) + (orbit.wDeg || 0) + (orbit.M0Deg || 0) + 360 * (tDays / P);
+    var el = elementsAt(orbit, sinceEpoch(orbit, tDays));
+    var L = (el.omDeg || 0) + (el.wDeg || 0) + meanAnomaly(orbit, tDays);
     L %= 360; if (L < 0) L += 360;
     return L;
   }
@@ -230,8 +262,7 @@
   function nextPerihelia(orbit, fromDate, count) {
     var P = periodYearsOf(orbit) * YEAR_D;
     var t0 = daysSinceJ2000(fromDate);
-    var M = ((orbit.M0Deg || 0) + 360 * (t0 / P)) % 360;
-    if (M < 0) M += 360;
+    var M = meanAnomaly(orbit, t0);
     var out = [];
     var remain = ((360 - M) / 360) * P;
     for (var k = 0; k < count; k++) out.push(dateFromDays(t0 + remain + k * P));
@@ -289,6 +320,7 @@
     AU_KM: AU_KM, GM_SUN: GM_SUN, G_KM: G_KM, J2000_MS: J2000_MS,
     daysSinceJ2000: daysSinceJ2000, dateFromDays: dateFromDays,
     gmOf: gmOf, solveKepler: solveKepler, periodYearsOf: periodYearsOf,
+    meanAnomaly: meanAnomaly, elementsAt: elementsAt,
     helioPos: helioPos, meanLongitude: meanLongitude,
     hohmann: hohmann, synodicYears: synodicYears, nextWindows: nextWindows, nextPerihelia: nextPerihelia,
     fastTransfer: fastTransfer, windowsForTransfer: windowsForTransfer, CR3BP: CR3BP,

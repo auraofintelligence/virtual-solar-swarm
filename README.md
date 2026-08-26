@@ -46,7 +46,7 @@ The question was first put to a field of students in Kolhapur, Maharashtra, at t
 
 No build step, no frameworks. Plain HTML, CSS and JavaScript. One external request: the Sun's dossier pulls the latest frames from NASA's Solar Dynamics Observatory, and falls back to the stored map if that feed cannot be reached. Everything else, including all thirty-two body maps and the three songs, is served from this repository.
 
-- `assets/astro.js` is the physics: Kepler propagation, Hohmann and faster tangential-burn transfers including hyperbolic, synodic windows, Hill spheres, orbit insertion, generalised stationary and sun-synchronous orbits, and the planar circular restricted three-body problem with numerically solved Lagrange points and RK4 integration.
+- `assets/astro.js` is the physics: Kepler propagation from each body's own element epoch with secular rates for the planets, Hohmann and faster tangential-burn transfers including hyperbolic, synodic windows, Hill spheres, orbit insertion, generalised stationary and sun-synchronous orbits, and the planar circular restricted three-body problem with numerically solved Lagrange points and RK4 integration.
 - `data/objects-*.js` are eleven reviewable data files that merge to 384 bodies. Two hundred carry dedicated crews; the rest are survey entries the host swarms watch.
 - `data/maps.js` registers thirty-two real mission maps in two sizes. `data/rotation.js` holds measured spin, oblateness, axial tilt and magnetic-axis data.
 - `assets/scale.js` and the fleet dial in `assets/core.js` let the reader set the size of the whole thing; the choice is remembered on their device and honoured by every page.
@@ -59,7 +59,9 @@ python -m http.server 4321
 
 ## Data and limits
 
-Orbital elements, radii, masses, rotation rates, oblateness, axial tilts and magnetic tilts are real published values, rounded. The maps are real mission imagery, credited in [`data/maps.js`](data/maps.js) and on the about page; bodies without a map are drawn under a latitude and longitude grid. [`docs/MAP-SOURCES.md`](docs/MAP-SOURCES.md) records where each map came from and where to find the ones still missing.
+Orbital elements come from NASA/JPL: the planets from JPL's Keplerian element set with secular rates, the 187 small bodies from the JPL Small-Body Database at their own solution epochs, the 169 planetary moons from JPL's satellite mean-element tables. Positions computed here sit a median of one arcsecond from JPL Horizons, checked 26 August 2026; [`docs/ORBIT-SOURCES.md`](docs/ORBIT-SOURCES.md) records the sources, the measured accuracy and the limits. Radii, masses, rotation rates, oblateness, axial tilts and magnetic tilts are published values, rounded, and are not yet reconciled against a single source.
+
+The maps are real mission imagery, credited in [`data/maps.js`](data/maps.js) and on the about page; bodies without a map are drawn under a latitude and longitude grid. [`docs/MAP-SOURCES.md`](docs/MAP-SOURCES.md) records where each map came from and where to find the ones still missing.
 
 The satellites, buses, instruments, timelines, design lives and cost figures are design fiction grounded in current public technology. Costs are engineering estimates for comparison, not a budget anyone has raised. Prices show in AUD (converted at 1 USD = A$1.55, indicative, August 2026) with USD alongside. The physics is teaching-grade throughout: right enough to compare options and plan shapes, not to fly a spacecraft. The about page lists every approximation by name.
 
