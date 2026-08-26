@@ -17,7 +17,8 @@
     ["network.html", "Network"],
     ["fleet.html", "Fleet"],
     ["cadence.html", "Cadence"],
-    ["about.html", "About"]
+    ["about.html", "About"],
+    ["site-map.html", "Site map"]
   ];
 
   /* The starting point: the tier sizes this study began counting with.

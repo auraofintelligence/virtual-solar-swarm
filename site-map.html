@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="en-AU">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Site map : Virtual Solar Swarm</title>
+<meta name="description" content="Every page in the Virtual Solar Swarm studio, grouped by what it is for.">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🛰️</text></svg>">
+<link rel="stylesheet" href="assets/style.css">
+</head>
+<body>
+<header id="site-header"></header>
+<main>
+  <h1>Site map</h1>
+  <p class="lede">Every page in the studio, grouped by what it is for. Nothing here is a dead end: each tool hands you on to the next one.</p>
+
+  <h2>Start here</h2>
+  <div class="grid cols-3">
+    <div class="card link-card"><a class="cover" href="index.html"><h3>Home</h3><p class="dim small">The question the whole studio answers, and the dial that sets the size of everything.</p></a></div>
+    <div class="card link-card"><a class="cover" href="scale.html"><h3>The scale</h3><p class="dim small">Fleet total and allocation policy in your hands, with the downstream numbers computed at every setting.</p></a></div>
+    <div class="card link-card"><a class="cover" href="targets.html"><h3>The catalogue</h3><p class="dim small">All 384 bodies, searchable and groupable. Every row opens a dossier.</p></a></div>
+  </div>
+
+  <h2>Look at the solar system</h2>
+  <div class="grid cols-3">
+    <div class="card link-card"><a class="cover" href="map.html"><h3>Orbit map</h3><p class="dim small">Every heliocentric target in animated 3D, positioned by real orbital elements.</p></a></div>
+    <div class="card link-card"><a class="cover" href="gravity.html"><h3>Gravity lab</h3><p class="dim small">Gravity as a landscape: Lagrange points, tadpoles, horseshoes, and insertions you brake by hand.</p></a></div>
+    <div class="card link-card"><a class="cover" href="orbit-lab.html"><h3>Orbit lab</h3><p class="dim small">Design an orbit around any body, oriented to the real sky, in simple or full Keplerian mode.</p></a></div>
+  </div>
+
+  <h2>Plan a mission</h2>
+  <div class="grid cols-3">
+    <div class="card link-card"><a class="cover" href="windows.html"><h3>Launch windows</h3><p class="dim small">When the doors open, and how a harder push bends every date.</p></a></div>
+    <div class="card link-card"><a class="cover" href="convoys.html"><h3>Convoys</h3><p class="dim small">Ride-share batching by where things actually are, then renewal on every window.</p></a></div>
+    <div class="card link-card"><a class="cover" href="rides.html"><h3>The rides</h3><p class="dim small">Launch stages for the gravity well, cruise engines for the road, and a rocket-equation calculator.</p></a></div>
+  </div>
+
+  <h2>Build the spacecraft</h2>
+  <div class="grid cols-3">
+    <div class="card link-card"><a class="cover" href="builder.html"><h3>Satellite builder</h3><p class="dim small">Bus, instruments and engine, judged against the physics of the destination.</p></a></div>
+    <div class="card link-card"><a class="cover" href="sensors.html"><h3>Instruments</h3><p class="dim small">The kit of parts, each explained in plain words, with fit-outs by target class.</p></a></div>
+    <div class="card link-card"><a class="cover" href="network.html"><h3>Network</h3><p class="dim small">Light lag, conjunction routing, trunk capacity and the control ladder.</p></a></div>
+  </div>
+
+  <h2>Keep it running</h2>
+  <div class="grid cols-3">
+    <div class="card link-card"><a class="cover" href="fleet.html"><h3>Fleet</h3><p class="dim small">Where the satellites end up, neighbourhood by neighbourhood.</p></a></div>
+    <div class="card link-card"><a class="cover" href="cadence.html"><h3>Replacement cadence</h3><p class="dim small">How fast they wear out, and the pace needed to keep every picket whole.</p></a></div>
+    <div class="card link-card"><a class="cover" href="about.html"><h3>About</h3><p class="dim small">Every approximation named, the imagery credits, the music and the licence.</p></a></div>
+  </div>
+
+  <h2>Dossiers</h2>
+  <p class="dim">Each of the 384 bodies has its own page at <code>object.html?id=</code>. A few worth opening first:</p>
+  <div class="chip-row" id="samples"></div>
+
+  <h2>In the repository</h2>
+  <ul class="dim" style="display:grid; gap:.4rem; padding-left:1.2rem">
+    <li><a href="https://github.com/auraofintelligence/virtual-solar-swarm">The public repository</a></li>
+    <li><a href="https://github.com/auraofintelligence/virtual-solar-swarm/blob/main/docs/MAP-SOURCES.md">Where the surface maps come from</a>, and where to find more</li>
+    <li><a href="https://github.com/auraofintelligence/virtual-solar-swarm/blob/main/LICENCE.md">The licence</a></li>
+    <li><a href="https://github.com/auraofintelligence/virtual-solar-swarm/issues">Corrections and contributions</a></li>
+  </ul>
+</main>
+<footer id="site-footer"></footer>
+<script src="assets/astro.js"></script>
+<script src="data/objects-core.js"></script>
+<script src="data/objects-moons.js"></script>
+<script src="data/objects-asteroids.js"></script>
+<script src="data/objects-comets.js"></script>
+<script src="data/objects-tnos.js"></script>
+<script src="data/objects-moons-jupiter2.js"></script>
+<script src="data/objects-moons-saturn2.js"></script>
+<script src="data/objects-moons-un2.js"></script>
+<script src="data/objects-small2.js"></script>
+<script src="data/objects-tnos2.js"></script>
+<script src="data/objects-hypothesis.js"></script>
+<script src="data/objects.js"></script>
+<script src="data/sensors.js"></script>
+<script src="data/buses.js"></script>
+<script src="assets/core.js"></script>
+<script>
+VSS.mountChrome("site-map.html");
+document.getElementById("samples").innerHTML =
+  ["sun","earth","europa","titan","enceladus","psyche","bennu","pluto","triton","sedna","halley","planet-nine"]
+  .map(function (id) {
+    var o = window.VSS_BY_ID[id];
+    return o ? '<a class="chip" style="text-decoration:none" href="object.html?id=' + id + '">' + o.name + "</a>" : "";
+  }).join("");
+</script>
+</body>
+</html>

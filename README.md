@@ -1,35 +1,49 @@
-# Virtual Solar Swarm : mission design studio
+# Virtual Solar Swarm
 
-🤝🔷 **A Luke × Claude build.** Created by Luke Nathan Hayes ([auraofintelligence](https://github.com/auraofintelligence)) and Claude (Fable 5) on 25 August 2026. Not a Codex build.
+**Public website:** [auraofintelligence.github.io/virtual-solar-swarm](https://auraofintelligence.github.io/virtual-solar-swarm/)
 
-An interactive, fully static website for designing a solar-system-wide satellite swarm: 384 catalogued bodies (the 200 funded targets plus a census of every named moon of the giant planets), real orbits, stable orbits, launch windows with an interactive delta-v dial, a live Lagrange-point gravity lab, modular sensor packages, propulsion, satellite builds, ride-share convoys with renewal planning, a data-relay and control-systems network model, fleet allocation and replacement cadence. Every globe wears humanity's real map of that body where one is bundled (the Sun, all eight planets and the Moon, from NASA/USGS and CC BY 4.0 mission-data assemblies, credited on the about page); bodies without a map are drawn plain in their measured colour rather than an invented surface.
+[Open the visual site map](https://auraofintelligence.github.io/virtual-solar-swarm/site-map.html) · [View the public repository](https://github.com/auraofintelligence/virtual-solar-swarm)
 
-**Live site:** https://auraofintelligence.github.io/virtual-solar-swarm/
+🤝🔷 **A Luke × Claude build.** Created by Luke Nathan Hayes ([auraofintelligence](https://github.com/auraofintelligence)) and Claude (Fable 5), August 2026. Not a Codex build.
+
+> This is an evolving choose-your-own science adventure, made to help open up the solar system for the civic space stewards of Earth and the solar system. Nothing described here has been built, launched or funded, and this repository does not claim otherwise.
+
+## What this project is
+
+Virtual Solar Swarm starts from a question with the hard part removed. The solar system already holds roughly two hundred moons and planets we know by name, and a long tail of smaller worlds behind them. Assume getting there is solved by someone else, and that a sensor package can arrive anywhere. The question left is the good one: **what would you send to each of them, and why?** And then, what lies beyond the two hundred?
+
+The site turns that question into sixteen working models. Every number is a dial rather than a verdict, and the reader's own choices carry across the whole site.
 
 ## The pages
 
 | Page | What it models |
 |---|---|
-| `index.html` | The idea, the numbers, and how the tools chain together |
-| `scale.html` | Every number as one dial: allocation solved at any fleet size, tested against the do-no-harm and earn-its-keep gates |
-| `targets.html` | The full 200-object catalogue, searchable and sortable |
-| `object.html?id=` | Per-target dossier: orbit, stable orbits, windows, fit-out, cadence |
-| `map.html` | Animated 3D heliocentric map driven by real orbital elements; drag to tilt and spin |
+| `index.html` | The question, and the fleet dial that sets the size of everything else |
+| `scale.html` | Fleet total and allocation policy in the reader's hands, with production, cost, coverage and traffic computed at every setting |
+| `targets.html` | The 384-body catalogue, searchable and groupable by neighbourhood, class, tier or environment |
+| `object.html?id=` | Per-body dossier: orbit, stable orbits, windows, instrument fit-out and renewal |
+| `map.html` | Animated 3D heliocentric map driven by real orbital elements |
 | `gravity.html` | The restricted three-body problem live: Lagrange points, tadpole and horseshoe orbits, playable insertions |
-| `orbit-lab.html` | 3D orbit designer: radius and tilt in hand, with stationary, sun-synchronous and Molniya orbits computed from each body's real spin and oblateness |
+| `orbit-lab.html` | 3D orbit designer oriented to the real sky, with stationary, sun-synchronous and Molniya orbits from each body's measured spin and oblateness |
 | `windows.html` | Interactive launch windows: dial in extra delta-v and the whole timetable bends |
-| `convoys.html` | Ride-share batch missions and renewal convoys on every window |
-| `network.html` | Live light lag, conjunction routing, trunk capacity and the control ladder |
+| `convoys.html` | Ride-share batching by where bodies actually are, and renewal convoys on every window |
 | `builder.html` | Satellite builder with mass, power, data, delta-v and cost budgets |
-| `rides.html` | Launch stages and cruise engines (ion, Neumann Drive, nuclear, sail) with a rocket-equation calculator |
+| `rides.html` | Launch stages and cruise engines, with a rocket-equation calculator |
 | `sensors.html` | The fifteen-module instrument kit of parts |
-| `fleet.html` | Fleet allocation with adjustable tier dials |
+| `network.html` | Live light lag, conjunction routing, trunk capacity and the control ladder |
+| `fleet.html` | Where the satellites end up, neighbourhood by neighbourhood |
 | `cadence.html` | Replacement drumbeat and factory-pace model |
-| `about.html` | Honest framing: every approximation named, licence, signature |
+| `about.html` | Every approximation named, imagery credits, the music and the licence |
+| `site-map.html` | Every page, grouped by what it is for |
 
 ## How it works
 
-No build step, no frameworks, no external requests. Plain HTML, CSS and JavaScript; the physics engine is `assets/astro.js` (teaching-grade mechanics: Kepler propagation, Hohmann and faster tangential-burn transfers including hyperbolic, synodic windows, Hill spheres, orbit insertion, and the planar circular restricted three-body problem with a numerically solved Lagrange landscape and RK4 integration). The catalogue lives in `data/objects-*.js` as five reviewable data files that merge to exactly 200 objects; buses, instruments and propulsion live beside them.
+No build step, no frameworks, no external requests. Plain HTML, CSS and JavaScript.
+
+- `assets/astro.js` is the physics: Kepler propagation, Hohmann and faster tangential-burn transfers including hyperbolic, synodic windows, Hill spheres, orbit insertion, generalised stationary and sun-synchronous orbits, and the planar circular restricted three-body problem with numerically solved Lagrange points and RK4 integration.
+- `data/objects-*.js` are eleven reviewable data files that merge to 384 bodies. Two hundred carry dedicated crews; the rest are survey entries the host swarms watch.
+- `data/maps.js` registers thirty-two real mission maps in two sizes. `data/rotation.js` holds measured spin, oblateness, axial tilt and magnetic-axis data.
+- `assets/scale.js` and the fleet dial in `assets/core.js` let the reader set the size of the whole thing; the choice is remembered on their device and honoured by every page.
 
 Run it locally with any static server, for example:
 
@@ -39,11 +53,27 @@ python -m http.server 4321
 
 ## Honesty notes
 
-This is a design study. Nothing in it has been built or launched, and the site says so on every relevant page. Orbital elements are real published values, rounded; masses of many small bodies are estimated from size and typical density, and are labelled as such; costs and lifetimes are adjustable round-number engineering targets. Prices display in AUD (converted at 1 USD = A$1.55, indicative, August 2026) with USD alongside.
+Orbital elements, radii, masses, rotation rates, oblateness, axial tilts and magnetic tilts are real published values, rounded. The maps are real mission imagery, credited in [`data/maps.js`](data/maps.js) and on the about page; bodies without a map are drawn under a latitude and longitude grid rather than an invented surface. [`docs/MAP-SOURCES.md`](docs/MAP-SOURCES.md) records where each map came from and where to find the ones still missing.
+
+The satellites, buses, instruments, timelines, design lives and cost figures are design fiction grounded in current public technology. Costs are engineering estimates for comparison, not a budget anyone has raised. Prices show in AUD (converted at 1 USD = A$1.55, indicative, August 2026) with USD alongside. The physics is teaching-grade throughout: right enough to compare options and plan shapes, not to fly a spacecraft. The about page lists every approximation by name.
+
+## The music
+
+Three songs by **i C. infinity**, from the album *A Protopian Gambit*, sit in the site: "Heliospheric Lantern" on the Sun's dossier, and both voices of "We Go Beyond" on the home and about pages. [The album on Suno](https://suno.com/playlist/5e56abcb-272b-455e-baff-6470627172ff) · [The wider music universe](https://auraofintelligence.github.io/i-C-infinity-music-universe/index.html)
+
+## Corrections and contributions
+
+Source corrections and clearly scoped improvements can be proposed through the repository's [public issues](https://github.com/auraofintelligence/virtual-solar-swarm/issues). Corrections to real measured data, and better authoritative maps, are especially welcome.
+
+Do not post personal information, confidential material, culturally restricted information, or claims of authority that have not been confirmed. A GitHub contribution is part of the public working record.
 
 ## Licence
 
-Strange But True Public Source Licence: see [LICENCE.md](LICENCE.md). Non-commercial use free with attribution; all commercial and corporate rights reserved to Luke Nathan Hayes.
+This repository uses the [Strange But True Public Source Licence](LICENCE.md).
+
+Copyright © 2026 **Luke Nathan Hayes / Strange But True / Aura of Intelligence**.
+
+This is public-source rather than open-source. Attributed personal, educational, artistic, research, community and other non-commercial use is allowed. Commercial, corporate, institutional, government, startup, agency, client or employer use requires written permission from Luke Nathan Hayes. Third-party material, including the NASA, USGS and CC BY mission imagery credited on the about page, keeps its own licence.
 
 ---
 🤝🔷 *Luke Nathan Hayes × Claude (Fable 5), August 2026.*
