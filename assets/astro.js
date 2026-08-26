@@ -73,23 +73,54 @@
     return M < 0 ? M + 360 : M;
   }
 
-  /* Heliocentric position at tDays since J2000. Returns {x,y,z} in AU
-     (ecliptic frame, x toward the vernal equinox). */
-  function helioPos(orbit, tDays) {
-    if (orbit.hyperbolic) return null;
-    var dt = sinceEpoch(orbit, tDays);
-    var el = elementsAt(orbit, dt);
-    var E = solveKepler(meanAnomaly(orbit, tDays) * D2R, el.e);
-    var a = el.aAU, e = el.e;
+  /* Place an orbit: semi-major axis in whatever unit is handed in, angles in
+     degrees, returning {x,y,z} in that same unit in the ecliptic frame with x
+     toward the vernal equinox. */
+  function kepXYZ(a, e, iDeg, omDeg, wDeg, Mdeg) {
+    var M = Mdeg % 360; if (M < 0) M += 360;
+    var E = solveKepler(M * D2R, e);
     var xo = a * (Math.cos(E) - e);
-    var yo = a * Math.sqrt(1 - e * e) * Math.sin(E);
-    var w = (el.wDeg || 0) * D2R, om = (el.omDeg || 0) * D2R, i = (el.iDeg || 0) * D2R;
+    var yo = a * Math.sqrt(Math.max(0, 1 - e * e)) * Math.sin(E);
+    var w = (wDeg || 0) * D2R, om = (omDeg || 0) * D2R, i = (iDeg || 0) * D2R;
     var cw = Math.cos(w), sw = Math.sin(w), co = Math.cos(om), so = Math.sin(om), ci = Math.cos(i), si = Math.sin(i);
     return {
       x: (cw * co - sw * so * ci) * xo + (-sw * co - cw * so * ci) * yo,
       y: (cw * so + sw * co * ci) * xo + (-sw * so + cw * co * ci) * yo,
       z: (sw * si) * xo + (cw * si) * yo
     };
+  }
+
+  /* Heliocentric position at tDays since J2000. Returns {x,y,z} in AU
+     (ecliptic frame, x toward the vernal equinox). */
+  function helioPos(orbit, tDays) {
+    if (orbit.hyperbolic) return null;
+    var el = elementsAt(orbit, sinceEpoch(orbit, tDays));
+    return kepXYZ(el.aAU, el.e, el.iDeg, el.omDeg, el.wDeg, meanAnomaly(orbit, tDays));
+  }
+
+  /* Does this orbit say where on it the body is, or only what shape it is? */
+  function hasPhase(orbit) {
+    return !!(orbit && orbit.aKm && orbit.nPerDay && orbit.M0Deg !== undefined);
+  }
+
+  /* A moon's position relative to its planet, in km, ecliptic frame. Mean
+     elements fitted to JPL Horizons: the mean anomaly runs at nPerDay while
+     the node and pericentre drift at their own rates. Null when the catalogue
+     holds only the orbit's size and shape. */
+  function moonPos(orbit, tDays) {
+    if (!hasPhase(orbit)) return null;
+    var dt = sinceEpoch(orbit, tDays);
+    return kepXYZ(orbit.aKm, orbit.e, orbit.iDeg,
+                  (orbit.omDeg || 0) + (orbit.domPerDay || 0) * dt,
+                  (orbit.wDeg || 0) + (orbit.dwPerDay || 0) * dt,
+                  orbit.M0Deg + orbit.nPerDay * dt);
+  }
+
+  /* How far round its orbit a moon is from pericentre, degrees. */
+  function moonPhaseDeg(orbit, tDays) {
+    if (!hasPhase(orbit)) return null;
+    var M = (orbit.M0Deg + orbit.nPerDay * sinceEpoch(orbit, tDays)) % 360;
+    return M < 0 ? M + 360 : M;
   }
 
   /* Mean ecliptic longitude, degrees, linear in time. */
@@ -321,7 +352,8 @@
     daysSinceJ2000: daysSinceJ2000, dateFromDays: dateFromDays,
     gmOf: gmOf, solveKepler: solveKepler, periodYearsOf: periodYearsOf,
     meanAnomaly: meanAnomaly, elementsAt: elementsAt,
-    helioPos: helioPos, meanLongitude: meanLongitude,
+    helioPos: helioPos, meanLongitude: meanLongitude, kepXYZ: kepXYZ,
+    moonPos: moonPos, moonPhaseDeg: moonPhaseDeg, hasPhase: hasPhase,
     hohmann: hohmann, synodicYears: synodicYears, nextWindows: nextWindows, nextPerihelia: nextPerihelia,
     fastTransfer: fastTransfer, windowsForTransfer: windowsForTransfer, CR3BP: CR3BP,
     hillRadiusKm: hillRadiusKm, circVel: circVel, orbPeriodHours: orbPeriodHours,

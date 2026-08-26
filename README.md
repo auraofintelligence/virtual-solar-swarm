@@ -25,7 +25,7 @@ The question was first put to a field of students in Kolhapur, Maharashtra, at t
 | `index.html` | The question, and the fleet dial that sets the size of everything else |
 | `scale.html` | Fleet total and allocation policy in the reader's hands, with production, cost, coverage and traffic computed at every setting |
 | `targets.html` | The 384-body catalogue, searchable and groupable by neighbourhood, class, tier or environment |
-| `object.html?id=` | Per-body dossier: orbit, stable orbits, windows, instrument fit-out and renewal |
+| `object.html?id=` | Per-body dossier: orbit, stable orbits, windows, instrument fit-out and renewal; a planet also gets its moons drawn where they are now |
 | `map.html` | Animated 3D heliocentric map driven by real orbital elements |
 | `gravity.html` | The restricted three-body problem live: Lagrange points, tadpole and horseshoe orbits, playable insertions |
 | `orbit-lab.html` | 3D orbit designer oriented to the real sky, with stationary, sun-synchronous and Molniya orbits from each body's measured spin and oblateness |
@@ -51,15 +51,15 @@ No build step, no frameworks. Plain HTML, CSS and JavaScript. One external reque
 - `data/maps.js` registers thirty-two real mission maps in two sizes. `data/rotation.js` holds measured spin, oblateness, axial tilt and magnetic-axis data.
 - `assets/scale.js` and the fleet dial in `assets/core.js` let the reader set the size of the whole thing; the choice is remembered on their device and honoured by every page.
 
-Run it locally with any static server, for example:
+Run it locally with the bundled dev server, which switches browser caching off so an edited data file is picked up straight away:
 
 ```
-python -m http.server 4321
+python tools/devserver.py 4321
 ```
 
 ## Data and limits
 
-Orbital elements come from NASA/JPL: the planets from JPL's Keplerian element set with secular rates, the 187 small bodies from the JPL Small-Body Database at their own solution epochs, the 169 planetary moons from JPL's satellite mean-element tables. Positions computed here sit a median of one arcsecond from JPL Horizons, checked 26 August 2026; [`docs/ORBIT-SOURCES.md`](docs/ORBIT-SOURCES.md) records the sources, the measured accuracy and the limits. Radii, masses, rotation rates, oblateness, axial tilts and magnetic tilts are published values, rounded, and are not yet reconciled against a single source.
+Orbital elements come from NASA/JPL: the planets from JPL's Keplerian element set with secular rates, the 187 small bodies from the JPL Small-Body Database at their own solution epochs, and the moons from ecliptic mean elements fitted to JPL Horizons. Heliocentric positions sit a median of one arcsecond from Horizons and moon positions a median of 0.7 degrees, checked 26 August 2026. Radii and masses were reconciled against JPL reference by reference rather than in bulk, since JPL's stored values are not uniformly the newer ones. [`docs/ORBIT-SOURCES.md`](docs/ORBIT-SOURCES.md) records every source, the measured accuracy and the limits, including the 32 moons the model does not place.
 
 The maps are real mission imagery, credited in [`data/maps.js`](data/maps.js) and on the about page; bodies without a map are drawn under a latitude and longitude grid. [`docs/MAP-SOURCES.md`](docs/MAP-SOURCES.md) records where each map came from and where to find the ones still missing.
 

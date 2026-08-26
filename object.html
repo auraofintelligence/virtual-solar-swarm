@@ -31,6 +31,7 @@
 <script src="assets/core.js"></script>
 <script src="data/maps.js"></script>
 <script src="assets/art.js"></script>
+<script src="assets/moonview.js"></script>
 <script>
 VSS.mountChrome("targets.html");
 
@@ -129,6 +130,19 @@ function mountSunLive() {
   else if (parent) periodLine = "laps " + parent.name + " every " + VSS.fmt(o.orbit.periodDays, o.orbit.periodDays < 10 ? 2 : 1) + " days";
   else periodLine = "laps the Sun every " + VSS.fmtDur(A.periodYearsOf(ho));
 
+  // where a moon is on its orbit at this moment
+  var nowLine = null;
+  if (parent && A.hasPhase(o.orbit)) {
+    var mp = A.moonPos(o.orbit, A.daysSinceJ2000(new Date()));
+    var sepKm = Math.sqrt(mp.x * mp.x + mp.y * mp.y + mp.z * mp.z);
+    var phase = A.moonPhaseDeg(o.orbit, A.daysSinceJ2000(new Date()));
+    var side = mp.z >= 0 ? "above" : "below";
+    nowLine = VSS.fmtKm(sepKm) + " from " + parent.name + " right now, " +
+      VSS.fmt(phase, 0) + "&deg; past its closest point and " + side + " the ecliptic";
+  } else if (parent) {
+    nowLine = null;
+  }
+
   var html = "";
   html += '<p class="faint"><a href="targets.html">← the catalogue</a></p>';
   var mapped = window.VSS_MAPS && window.VSS_MAPS[o.id];
@@ -154,6 +168,7 @@ function mountSunLive() {
     "<dt>Mean radius</dt><dd>" + VSS.fmt(o.radiusKm, o.radiusKm < 10 ? 1 : 0) + " km</dd>" +
     "<dt>Mass</dt><dd>" + (o.massKg ? o.massKg.toExponential(2) + " kg" : (gm / A.G_KM).toExponential(1) + " kg" + massNote) + "</dd>" +
     "<dt>Orbit</dt><dd>" + periodLine + "</dd>" +
+    (nowLine ? "<dt>Where it is now</dt><dd>" + nowLine + "</dd>" : "") +
     "<dt>Environment</dt><dd>" + VSS.ENV_LABEL[o.env] + "</dd>" +
     "<dt>Design life there</dt><dd>" + (life ? life + " years per satellite" : "single flyby, no station-keeping") + "</dd>" +
     "</dl></div>";
@@ -318,11 +333,24 @@ function mountSunLive() {
           "<td class='wrap dim small'>" + (k.why || "") + "</td></tr>";
       }).join("") + "</tbody></table></div>";
   }
+  var withPhase = kids.filter(function (k) { return A.hasPhase(k.orbit); });
+  if (withPhase.length >= 2) {
+    html += '<div id="moon-view" style="margin-top:1.2rem"></div>';
+    var noPhase = kids.filter(function (k) { return k.orbit.aKm && !A.hasPhase(k.orbit); });
+    if (noPhase.length) {
+      html += '<p class="faint">Not placed: ' + noPhase.map(function (k) { return k.name; }).join(", ") +
+        ". The catalogue holds the size and shape of " + (noPhase.length === 1 ? "that orbit" : "those orbits") +
+        " but not where on it the moon sits.</p>";
+    }
+  }
   if (parent) {
     html += '<p class="small">Part of the <a href="object.html?id=' + parent.id + '">' + parent.name + " system →</a></p>";
   }
 
   page.innerHTML = html;
+  if (document.getElementById("moon-view") && window.VSS_MOONVIEW) {
+    window.VSS_MOONVIEW.mount("moon-view", o.id);
+  }
   if (isSun) {
     VSS.mountSong("song-sun", {
       title: "Heliospheric Lantern",
