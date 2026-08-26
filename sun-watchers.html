@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="en-AU">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Watching the Sun : Virtual Solar Swarm</title>
+<meta name="description" content="Every spacecraft that has watched the Sun, the ones being built now, and the far-horizon idea of using the Sun itself as a telescope.">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🛰️</text></svg>">
+<link rel="stylesheet" href="assets/style.css">
+</head>
+<body>
+<header id="site-header"></header>
+<main>
+  <h1>Watching the Sun</h1>
+  <p class="lede">This site models a hundred satellites wrapped around the Sun. That idea is not built on nothing: people have been sending spacecraft to watch our star since the 1960s, and a queue of new ones is being assembled right now. This page is the real record, then the plans, then the idea at the far end of the runway: using the Sun itself as a telescope lens big enough to photograph the surface of a planet around another star.</p>
+
+  <div class="callout warm">
+    Everything on this page is real: flown missions, funded builds, published concepts. It is here because the swarm this studio designs would be the next rung on a ladder that already exists. The <a href="object.html?id=sun">Sun's dossier</a> carries the live view from one of these spacecraft right now.
+  </div>
+
+  <h2>The whole line, by launch year</h2>
+  <p class="dim small">Each mark is a spacecraft. Hover for the name, click to jump to it. Colour is what it is doing now.</p>
+  <div class="canvas-wrap"><canvas id="timeline" width="1160" height="220"></canvas><div class="canvas-hud" id="tl-hud">hover a mark</div></div>
+  <div class="chip-row" id="status-chips"></div>
+
+  <div id="mission-groups"></div>
+
+  <h2 id="lens">The far end: the Sun as a telescope</h2>
+  <p class="lede" style="max-width:52rem">Gravity bends light. The Sun bends it enough that rays grazing its edge come to a focus, and anything parked beyond that focus sees the Sun working as a lens hundreds of billions of times more powerful than any mirror we could launch. The focus starts around 550 times the Earth to Sun distance, well past everything else in this catalogue.</p>
+  <div class="grid cols-2" id="lens-cards"></div>
+  <div class="callout">
+    What it would buy, if it were ever flown: not a dot, and not an artist's impression, but a genuine image of the surface of a planet around another star, with continents and weather resolved. What it costs is the hard part: a sail-driven craft, decades of travel to reach 550 AU and beyond, and a way to hold station while scanning the ring of light the Sun draws around itself. Every entry above is a real published study, and none of them has flown.
+  </div>
+
+  <h2>Where this site sits on that ladder</h2>
+  <p class="dim">The <a href="index.html">swarm this studio designs</a> is not one of these missions and does not pretend to be. It takes what the line above proves is possible, multi-point observation from many vantage points at once, and asks what happens if you stop doing it one spacecraft at a time. The <a href="scale.html">scale page</a> is where you decide how far to push that.</p>
+</main>
+<footer id="site-footer"></footer>
+<script src="assets/core.js"></script>
+<script src="data/sun-watchers.js"></script>
+<script src="assets/sun-watchers.js"></script>
+</body>
+</html>

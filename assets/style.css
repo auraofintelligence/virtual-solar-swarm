@@ -281,3 +281,26 @@ figure.card figcaption { line-height: 1.55; }
   .sun-live { grid-template-columns: 1fr; justify-items: center; text-align: center; }
   .sun-live .chip-row { justify-content: center; }
 }
+
+/* ---------- sun watchers ---------- */
+.mission-card { display: grid; grid-template-columns: 132px 1fr; gap: 1rem; align-items: start; }
+.mission-card img { width: 132px; height: 132px; object-fit: cover; border-radius: 8px; background: #05070e; }
+.mission-card .no-img {
+  width: 132px; height: 132px; border-radius: 8px; background: var(--bg-raise);
+  display: grid; place-items: center; color: var(--ink-faint); font-size: .74rem; text-align: center; padding: .4rem;
+}
+.mission-head { display: flex; flex-wrap: wrap; gap: .4rem .7rem; align-items: baseline; }
+.mission-head h3 { margin: 0; }
+.mission-years { color: var(--ink-faint); font-size: .85rem; font-variant-numeric: tabular-nums; }
+.st { display: inline-block; padding: .06rem .5rem; border-radius: 999px; font-size: .7rem;
+      font-weight: 600; letter-spacing: .04em; border: 1px solid currentColor; text-transform: uppercase; }
+.st-operating { color: #4ade80; }
+.st-retired { color: #7e8ca6; }
+.st-building { color: #38bdf8; }
+.st-planned { color: #a78bfa; }
+.st-concept { color: #f0b429; }
+.mission-finding { border-left: 2px solid var(--panel-edge); padding-left: .7rem; margin-top: .5rem; }
+@media (max-width: 560px) {
+  .mission-card { grid-template-columns: 1fr; }
+  .mission-card img, .mission-card .no-img { width: 100%; height: 180px; }
+}
