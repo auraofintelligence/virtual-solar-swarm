@@ -217,7 +217,17 @@ VSS.mountChrome("targets.html");
     html += '<p class="small">Part of the <a href="object.html?id=' + parent.id + '">' + parent.name + " system →</a></p>";
   }
 
+  if (isSun) html += '<div id="song-sun"></div>';
+
   page.innerHTML = html;
+  if (isSun) {
+    VSS.mountSong("song-sun", {
+      title: "Heliospheric Lantern",
+      file: "assets/music/heliospheric-lantern.mp4",
+      poster: "assets/music/heliospheric-lantern.jpg",
+      blurb: "The Sun, singing for itself: a G-type flame drifting the Orion Arm, keeping the time we live by."
+    });
+  }
   window.VSS_ART.paint(document.getElementById("portrait"), o);
   window.VSS_ART.autoPaint(page);
 })();

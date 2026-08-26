@@ -15,11 +15,13 @@
   <p class="lede">Start from a count: the solar system already holds roughly two hundred moons and planets we know by name, and a long tail of smaller worlds behind them. Now assume the hard part is solved by someone else, that getting there is handled and your sensor packages can arrive. The question left is the good one: what would you send to each of them, and why? This studio is somewhere to answer that, and then to go beyond the two hundred. Every page is a working model you can pull on.</p>
 
   <div class="family-row" id="band"></div>
-  <p class="faint" style="margin-top:.2rem">The Sun, the eight planets and our Moon, each wearing humanity's real map of it: NASA Blue Marble, Lunar Reconnaissance Orbiter, MESSENGER, Viking, Cassini and Voyager data. Bodies we have not mapped are drawn plain, in their measured colour, on the <a href="targets.html">catalogue</a>.</p>
+  <p class="faint" style="margin-top:.2rem">The Sun, the eight planets and our Moon, each wearing humanity's real map of it: NASA Blue Marble, Lunar Reconnaissance Orbiter, MESSENGER, Viking, Cassini and Voyager data. The other 352 bodies in the <a href="targets.html">catalogue</a> wear a latitude and longitude grid instead, because a map of them does not exist yet.</p>
 
   <div class="callout warm">
-    This is a design study, not a mission. Nothing on this site has been built or launched. The maths is teaching-grade mechanics: right enough to compare options and plan shapes, not to fly a spacecraft. The <a href="about.html">about page</a> lists every approximation.
+    This is an evolving choose-your-own science adventure, made to help open up the solar system for the civic space stewards of Earth and the solar system. Every number is a dial and every page is a working model; none of it is settled, and nothing here has been built or launched. The maths is teaching-grade: right enough to compare options and plan shapes, not to fly a spacecraft. The <a href="about.html">about page</a> lists every approximation.
   </div>
+
+  <div id="song-home"></div>
 
   <h2>The idea in one breath</h2>
   <p>At the starting setting: two hundred targets carry a standing crew of their own: a baseline picket of four satellites, one over each pole and one over each side, so a body is seen from all angles at once, rising to dense swarms of fifty at busy worlds and a hundred wrapped right around the Sun. Around that first ring rides the census: every named moon of the giant planets and a deeper sweep of small worlds, watched by the host swarms until the dial gives them crews of their own. Set the dial below and the model builds whatever that comes to, and every one of those eventually wears out, which is why replacement gets its own pages.</p>
@@ -56,13 +58,13 @@
     <div class="card link-card"><a class="cover" href="map.html"><h3>Orbit map</h3><p class="dim small">Every heliocentric target on one animated 3D map, positioned by real orbital elements. Drag to tilt and spin, scrub time forwards and back.</p></a></div>
     <div class="card link-card"><a class="cover" href="gravity.html"><h3>Gravity lab</h3><p class="dim small">Gravity as a landscape: Lagrange points, tadpole and horseshoe orbits, and arrival insertions you brake by hand.</p></a></div>
     <div class="card link-card"><a class="cover" href="orbit-lab.html"><h3>Orbit lab</h3><p class="dim small">Pick a body and design a stable orbit around it: how low is safe, how high is stable, and what a lap takes.</p></a></div>
-    <div class="card link-card"><a class="cover" href="windows.html"><h3>Launch windows</h3><p class="dim small">When the doors open, and how money bends the schedule: dial in extra push and watch every date move.</p></a></div>
+    <div class="card link-card"><a class="cover" href="windows.html"><h3>Launch windows</h3><p class="dim small">When the doors open, and how a harder push bends the schedule: dial in extra speed and watch every date move.</p></a></div>
     <div class="card link-card"><a class="cover" href="builder.html"><h3>Satellite builder</h3><p class="dim small">Fit a bus with instruments and an engine, watch the budgets move, and see whether your design survives its destination.</p></a></div>
     <div class="card link-card"><a class="cover" href="rides.html"><h3>The rides</h3><p class="dim small">Two fleets for two problems: chemical fire for the gravity well; ion, Neumann Drive, nuclear and sail for the road.</p></a></div>
     <div class="card link-card"><a class="cover" href="sensors.html"><h3>Instruments</h3><p class="dim small">The kit of parts: fifteen modular instruments, each explained in plain words, with the recommended fit-out for every target class.</p></a></div>
     <div class="card link-card"><a class="cover" href="convoys.html"><h3>Convoys</h3><p class="dim small">Nothing flies alone: batch missions ride-share to each system, then disperse. Deployment convoys, then renewal convoys on every window.</p></a></div>
     <div class="card link-card"><a class="cover" href="network.html"><h3>Network</h3><p class="dim small">Data relays, light lag and control: who decides what, at every distance, when a command takes hours to arrive.</p></a></div>
-    <div class="card link-card"><a class="cover" href="fleet.html"><h3>Fleet</h3><p class="dim small">How 1,300 satellites spread across 200 targets. Drag the tier dials and watch the whole fleet re-total.</p></a></div>
+    <div class="card link-card"><a class="cover" href="fleet.html"><h3>Fleet</h3><p class="dim small">Where your satellites end up, neighbourhood by neighbourhood. Drag the tier dials and watch the whole fleet re-total.</p></a></div>
     <div class="card link-card"><a class="cover" href="cadence.html"><h3>Replacement cadence</h3><p class="dim small">Satellites die. This page models how fast, and what the factory line would need to produce to keep every picket whole.</p></a></div>
     <div class="card link-card"><a class="cover" href="about.html"><h3>About</h3><p class="dim small">What this is, what it leans on, every approximation named, and the licence.</p></a></div>
   </div>
@@ -126,6 +128,13 @@ VSS.mountChrome("index.html");
     b.addEventListener("click", function () { dial.value = fToDial(+b.dataset.f); refresh(); });
   });
   refresh();
+
+  VSS.mountSong("song-home", {
+    title: "We Go Beyond",
+    file: "assets/music/we-go-beyond-female.mp4",
+    poster: "assets/music/we-go-beyond-female.jpg",
+    blurb: "The song this studio grew alongside. Not gods in the chamber, just architects learning."
+  });
 
   // the family: real maps, each face linking to its dossier
   var lineup = ["sun", "mercury", "venus", "earth", "moon", "mars", "jupiter", "saturn", "uranus", "neptune"];

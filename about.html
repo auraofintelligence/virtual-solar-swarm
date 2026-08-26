@@ -14,6 +14,12 @@
   <h1>About this studio</h1>
   <p class="lede">The Virtual Solar Swarm starts from a question with the hard part removed. Assume getting there is solved by someone else, and that a sensor package can arrive anywhere in the solar system. What would you send to each of the two hundred or so moons and planets we know by name, and why? Then what lies beyond them? This site turns that question into working models you can pull on. It is a thing to think with, not a mission plan.</p>
 
+  <div class="callout warm">
+    This is an evolving choose-your-own science adventure, made to help open up the solar system for the civic space stewards of Earth and the solar system.
+  </div>
+
+  <div id="song-about"></div>
+
   <h2>What is real here and what is not</h2>
   <p>Nothing described on this site has been built or launched, and this site does not claim otherwise. The orbital elements of the 200 targets are real published values (rounded); the physics is real but simplified; the satellites, buses, instruments and timelines are design fiction grounded in current public technology, and the cost figures are engineering estimates for comparison, not a budget anyone has raised. Where a page speaks of what the swarm "would" do, that conditional is doing honest work.</p>
 
@@ -44,6 +50,9 @@
   <ul id="credits" class="dim small" style="display:grid; gap:.3rem; padding-left:1.2rem"></ul>
   <p class="faint">Assemblies marked CC BY 4.0 are by <a href="https://www.solarsystemscope.com/textures/">Solar System Scope</a>, built from NASA mission and elevation data, used under the <a href="https://creativecommons.org/licenses/by/4.0/">Creative Commons Attribution 4.0</a> licence. NASA and USGS imagery is public domain. This site's own code and text are under its own licence, below.</p>
 
+  <h2>The music</h2>
+  <p class="dim">The songs on this site are by i C. infinity, from the album <em>A Protopian Gambit</em>: "Heliospheric Lantern" on the Sun's dossier, and both voices of "We Go Beyond" here and on the home page. The <a href="https://suno.com/playlist/5e56abcb-272b-455e-baff-6470627172ff">album is on Suno</a>, and the wider <a href="https://auraofintelligence.github.io/i-C-infinity-music-universe/index.html">music universe</a> holds the rest.</p>
+
   <h2>Signature</h2>
   <p>🤝🔷 A Luke × Claude build. Created by Luke Nathan Hayes (<a href="https://github.com/auraofintelligence">auraofintelligence</a>) and Claude (Fable 5), August 2026. Not a Codex build. Part of the wider Aura of Intelligence and Strange But True family of public design studies.</p>
 
@@ -70,6 +79,12 @@
 <script src="data/maps.js"></script>
 <script>
 VSS.mountChrome("about.html");
+VSS.mountSong("song-about", {
+  title: "We Go Beyond",
+  file: "assets/music/we-go-beyond-male.mp4",
+  poster: "assets/music/we-go-beyond-male.jpg",
+  blurb: "The same song in another voice. Two takes, because a thing worth singing is worth singing more than one way."
+});
 document.getElementById("credits").innerHTML = Object.keys(window.VSS_MAPS).map(function (id) {
   var o = window.VSS_BY_ID[id];
   return "<li><strong>" + (o ? o.name : id) + ":</strong> " + window.VSS_MAPS[id].credit + "</li>";

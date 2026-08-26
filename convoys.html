@@ -26,17 +26,17 @@
     <div class="card"><div class="stat" id="s-saved">·</div><div class="stat-label">solo launches avoided</div></div>
     <div class="card"><div class="stat" id="s-renew">·</div><div class="stat-label">renewal convoys / year</div></div>
   </div>
-  <p class="dim small">A fleet of about 1,300 does not mean 1,300 launches. It means a much shorter list of well-packed convoys, and the solar system's own timetable, from the <a href="windows.html">windows model</a>, decides when each one can leave.</p>
+  <p class="dim small">A fleet in the thousands does not mean thousands of launches. It means a much shorter list of well-packed convoys, and the solar system's own timetable, from the <a href="windows.html">windows model</a>, decides when each one can leave. Change the fleet size on <a href="index.html">the home page</a> or <a href="scale.html">the scale page</a> and this whole board re-plans itself.</p>
 
   <h2>The convoy board</h2>
   <div class="table-wrap">
     <table><thead><tr>
-      <th>Destination</th><th class="num">Satellites</th><th class="num">Deploy convoys</th>
-      <th>Next door</th><th class="num">Cruise</th><th>Window rhythm</th>
-      <th class="num">Renewal need</th><th>Renewal ride</th>
+      <th>Destination</th><th class="num">Distance</th><th class="num">Satellites</th><th class="num">Deploy convoys</th>
+      <th>Next door</th><th>Cruise</th><th>Window rhythm</th>
+      <th class="num">Due each window</th><th>Renewal ride</th>
     </tr></thead><tbody id="rows"></tbody></table>
   </div>
-  <p class="faint">Renewal need is the average number of replacement satellites that come due between one window and the next, from each environment's design life. Clusters like the main belt are served as touring convoys that drop satellites at several neighbours on one run; deep clusters renew on generational timetables. Interstellar interceptors are not convoyed; they wait fuelled near Earth.</p>
+  <p class="faint">Planets and their moons are one destination each, because a convoy that brakes into the Jupiter system can reach any of its moons from there. Everything else is batched by <em>where it actually is</em> rather than by what taxonomy calls it: Ceres tours with the main belt because that is where Ceres is, and Pluto keeps its own line because Charon rides with it. Comets and other steep divers are met inbound near perihelion rather than toured, and interstellar interceptors are not convoyed at all. "Due each window" is how many replacements come of age between one launch window and the next, from each environment's design life. Far-off destinations all settle to a yearly rhythm for the same reason: once a target is much slower than Earth, Earth simply laps it once a year, and the door opens on that lap.</p>
 
   <h2>How a convoy works</h2>
   <div class="grid cols-3">
@@ -72,72 +72,142 @@ VSS.mountChrome("convoys.html");
 
   function lifeOf(o) { return VSS.DESIGN_LIFE[o.env] || 15; }
 
-  // ---- build destinations: planetary systems, then clusters by group ----
+  // ---- destinations: planetary systems, then everything else batched by
+  // where it actually is, not by what taxonomy calls it. Ceres rides with the
+  // main belt because that is where Ceres is; Pluto rides with the deep. ----
   var dests = [];
-  function sysDest(repId, label) {
+  var claimed = {};
+  function claim(list) { list.forEach(function (o) { claimed[o.id] = 1; }); }
+
+  function sysDest(repId, label, kind) {
     var rep = byId[repId];
     var members = [rep].concat(window.VSS_OBJECTS.filter(function (o) { return o.parent === repId; }));
-    dests.push({ label: label, rep: rep, members: members, kind: "system" });
+    claim(members);
+    dests.push({ label: label, rep: rep, members: members, kind: kind || "system" });
   }
-  dests.push({ label: "Helios (the Sun)", rep: byId.sun, members: [byId.sun], kind: "sun" });
-  dests.push({ label: "Earth and Moon (home)", rep: byId.earth,
-    members: [byId.earth].concat(window.VSS_OBJECTS.filter(function (o) { return o.parent === "earth"; })), kind: "home" });
+  sysDest("sun", "Helios, the Sun", "sun");
+  sysDest("earth", "Earth and the Moon", "home");
   sysDest("mercury", "Mercury");
   sysDest("venus", "Venus");
-  sysDest("mars", "Mars system");
+  sysDest("mars", "Mars and its two moons");
   sysDest("jupiter", "Jupiter system");
   sysDest("saturn", "Saturn system");
   sysDest("uranus", "Uranus system");
   sysDest("neptune", "Neptune system");
-  sysDest("pluto", "Pluto system");
+  sysDest("pluto", "Pluto and Charon");
 
-  var clusterGroups = ["Main belt", "Near-Earth", "Jupiter trojans", "Mars trojans", "Centaurs", "Comets", "Dwarf planets", "Trans-Neptunian objects"];
-  clusterGroups.forEach(function (g) {
-    var roots = window.VSS_OBJECTS.filter(function (o) { return o.group === g && !o.parent && o.cls !== "hypothesis"; });
-    if (!roots.length) return;
-    var members = roots.slice();
-    roots.forEach(function (r) {
-      window.VSS_OBJECTS.forEach(function (o) { if (o.parent === r.id) members.push(o); });
-    });
-    // exclude pluto (already a system) from dwarf cluster
-    members = members.filter(function (o) { return o.id !== "pluto" && o.parent !== "pluto"; });
-    var dedicated = members.filter(function (o) { return o.tier !== "survey" && !(VSS.helioOrbitOf(o).e > 0.85); });
-    var pool = dedicated.length ? dedicated : members;
-    var as = pool.map(function (o) { return VSS.helioOrbitOf(o).aAU; }).sort(function (a, b) { return a - b; });
-    var median = as[Math.floor(as.length / 2)];
-    dests.push({ label: g + " (touring)", rep: null, aAU: median, members: members, kind: "cluster" });
+  /* Distance bands for everything else. A convoy tours one band: it brakes
+     once into the band and then spends its own small delta-v moving between
+     neighbours, which is why batching by distance is the honest unit. */
+  var BANDS = [
+    { lo: 0, hi: 1.6, label: "Near-Earth rocks", note: "the cheapest targets in the solar system, some reachable on almost any date" },
+    { lo: 1.6, hi: 4.0, label: "Main belt, inner tour", note: "includes Ceres and Vesta, the belt's two big ones" },
+    { lo: 4.0, hi: 7.0, label: "Jupiter's orbit and the trojan camps", note: "the trojans lead and trail Jupiter on its own orbit" },
+    { lo: 7.0, hi: 16.0, label: "Saturn's reach and the centaurs", note: "loose icy bodies between the giants, on unstable orbits" },
+    { lo: 16.0, hi: 34.0, label: "Ice giant distances", note: "the sparse zone out past Uranus" },
+    { lo: 34.0, hi: 60.0, label: "The Kuiper belt", note: "the main ring of ice worlds beyond Neptune" },
+    { lo: 60.0, hi: 1e9, label: "The deep field", note: "scattered and detached bodies; one convoy per generation, if that" }
+  ];
+  var leftovers = window.VSS_OBJECTS.filter(function (o) {
+    return !claimed[o.id] && o.cls !== "hypothesis" && o.cls !== "interstellar";
   });
+  // comets and other steep divers are met inbound, not toured
+  var divers = leftovers.filter(function (o) { var h = VSS.helioOrbitOf(o); return h && h.e > 0.6; });
+  var tourable = leftovers.filter(function (o) { return divers.indexOf(o) < 0; });
+
+  BANDS.forEach(function (b) {
+    var members = tourable.filter(function (o) {
+      var h = VSS.helioOrbitOf(o);
+      return h && h.aAU >= b.lo && h.aAU < b.hi;
+    });
+    if (!members.length) return;
+    var as = members.map(function (o) { return VSS.helioOrbitOf(o).aAU; }).sort(function (x, y) { return x - y; });
+    dests.push({
+      label: b.label, rep: null, aAU: as[Math.floor(as.length / 2)],
+      spanAU: [as[0], as[as.length - 1]], members: members, kind: "band", note: b.note
+    });
+  });
+  if (divers.length) {
+    dests.push({ label: "Comets and steep divers", rep: null, members: divers, kind: "divers",
+      note: "met inbound near perihelion rather than toured; each one keeps its own timetable" });
+  }
+  var visitors = window.VSS_OBJECTS.filter(function (o) { return o.cls === "interstellar"; });
+  if (visitors.length) {
+    dests.push({ label: "Interstellar visitors", rep: null, members: visitors, kind: "visitors",
+      note: "not convoyed at all: interceptors wait fuelled near Earth for a target that arrives without warning" });
+  }
 
   function modelDest(d, cap, sparePct) {
     var sats = d.members.reduce(function (a, o) { return a + VSS.tierCount(o); }, 0);
     var rate = d.members.reduce(function (a, o) {
       var n = VSS.tierCount(o); return n ? a + n / lifeOf(o) : a;
     }, 0);
-    var out = { label: d.label, sats: sats, rate: rate };
+    var out = { label: d.label, note: d.note || "", sats: sats, rate: rate, span: "" };
     var withSpares = Math.ceil(sats * (1 + sparePct / 100));
     out.flights = sats ? Math.ceil(withSpares / cap) : 0;
-    if (d.kind === "sun") {
-      out.windowTxt = "always open"; out.cruiseTxt = "inward spiral"; out.rhythmTxt = "continuous";
-      out.perWindow = rate; out.renewTxt = "rolling resupply";
+
+    if (d.spanAU) {
+      out.span = d.spanAU[0].toFixed(1) + " to " + d.spanAU[1].toFixed(1) + " AU";
+    } else if (d.rep && d.rep.orbit && d.rep.orbit.aAU) {
+      out.span = VSS.fmt(d.rep.orbit.aAU, d.rep.orbit.aAU < 10 ? 2 : 1) + " AU";
+    }
+
+    if (d.kind === "sun" || d.kind === "home") {
+      out.windowTxt = "any time";
+      out.cruiseTxt = d.kind === "sun" ? "months, spiralling in" : "days";
+      out.rhythmTxt = "no waiting";
+      out.perWindow = rate;
+      out.renewTxt = "topped up continuously";
       return out;
     }
-    if (d.kind === "home") {
-      out.windowTxt = "always open"; out.cruiseTxt = "days"; out.rhythmTxt = "on demand";
-      out.perWindow = rate; out.renewTxt = "rolling resupply";
+    if (d.kind === "visitors") {
+      out.windowTxt = "on discovery";
+      out.cruiseTxt = "weeks";
+      out.rhythmTxt = "unpredictable";
+      out.perWindow = 0;
+      out.renewTxt = "kept fuelled, not renewed";
       return out;
     }
-    var aAU = d.rep ? (d.rep.orbit ? d.rep.orbit.aAU : 1) : d.aAU;
-    var ho = d.rep ? d.rep.orbit : { aAU: d.aAU, e: 0, iDeg: 0, omDeg: 0, wDeg: 0, M0Deg: 0, periodYears: Math.pow(d.aAU, 1.5) };
+    if (d.kind === "divers") {
+      var soonest = null;
+      d.members.forEach(function (o) {
+        var h = VSS.helioOrbitOf(o);
+        if (!h || h.hyperbolic) return;
+        var pk = A.nextPerihelia(h, now, 1)[0];
+        if (pk && pk.getFullYear() < 2200 && (!soonest || pk < soonest)) soonest = pk;
+      });
+      out.windowTxt = soonest ? VSS.fmtDate(soonest) + " (next perihelion)" : "each on its own return";
+      out.cruiseTxt = "meet inbound";
+      out.rhythmTxt = "one target at a time";
+      out.perWindow = rate;
+      out.renewTxt = "flown fresh each visit";
+      return out;
+    }
+
+    var ho = d.rep ? d.rep.orbit
+      : { aAU: d.aAU, e: 0, iDeg: 0, omDeg: 0, wDeg: 0, M0Deg: 0, periodYears: Math.pow(d.aAU, 1.5) };
+    var aAU = ho.aAU;
     var t = A.fastTransfer(1, aAU, 0);
     var syn = A.synodicYears(1, A.periodYearsOf(ho));
     var wins = A.windowsForTransfer(earth, ho, now, 1, t);
-    out.windowTxt = wins.length ? VSS.fmtDate(wins[0]) : "irregular";
-    out.cruiseTxt = VSS.fmtDur(Math.min(t.tofYears, 25)) + (t.tofYears > 25 ? " (fast path)" : "");
-    out.rhythmTxt = isFinite(syn) ? "every " + VSS.fmtDur(syn) : "irregular";
+    out.windowTxt = wins.length ? VSS.fmtDate(wins[0]) : "any time";
+    // the cheapest path is silly slow far out; say so plainly instead of capping silently
+    if (t.tofYears > 20) {
+      var fast = A.fastTransfer(1, aAU, 6);
+      out.cruiseTxt = VSS.fmtDur(Math.min(fast.tofYears, 40)) + " on a hard push";
+      out.slowNote = "cheapest path would take " + VSS.fmt(t.tofYears, 0) + " years";
+    } else {
+      out.cruiseTxt = VSS.fmtDur(t.tofYears);
+    }
+    out.rhythmTxt = !isFinite(syn) ? "no clean rhythm"
+      : syn < 0.92 ? "every " + VSS.fmt(syn * 12, 0) + " months"
+      : syn < 1.12 ? "yearly, near enough"
+      : "every " + VSS.fmtDur(syn);
     out.perWindow = isFinite(syn) ? rate * syn : rate;
-    out.renewTxt = rate > 0
-      ? (Math.ceil(out.perWindow / cap)) + " convoy" + (Math.ceil(out.perWindow / cap) > 1 ? "s" : "") + " each window"
-      : "·";
+    var n = Math.ceil(out.perWindow / cap);
+    out.renewTxt = rate <= 0 ? "no crews to renew"
+      : out.perWindow < 1 ? "one convoy every few windows"
+      : n + " convoy" + (n > 1 ? "s" : "") + " each window";
     return out;
   }
 
@@ -158,10 +228,15 @@ VSS.mountChrome("convoys.html");
     document.getElementById("rows").innerHTML = models.filter(function (m) { return m.sats > 0; })
       .sort(function (a, b) { return b.sats - a.sats; })
       .map(function (m) {
-        return "<tr><td>" + m.label + "</td><td class='num'>" + VSS.fmt(m.sats) + "</td>" +
+        return "<tr><td class='wrap'>" + m.label +
+          (m.note ? "<br><span class='faint'>" + m.note + "</span>" : "") + "</td>" +
+          "<td class='num'>" + (m.span || "·") + "</td>" +
+          "<td class='num'>" + VSS.fmt(m.sats) + "</td>" +
           "<td class='num'>" + m.flights + "</td><td>" + m.windowTxt + "</td>" +
-          "<td class='num'>" + m.cruiseTxt + "</td><td>" + m.rhythmTxt + "</td>" +
-          "<td class='num'>" + VSS.fmt(m.perWindow, 1) + "</td><td>" + m.renewTxt + "</td></tr>";
+          "<td class='wrap'>" + m.cruiseTxt +
+          (m.slowNote ? "<br><span class='faint'>" + m.slowNote + "</span>" : "") + "</td>" +
+          "<td>" + m.rhythmTxt + "</td>" +
+          "<td class='num'>" + (m.perWindow > 0 ? VSS.fmt(m.perWindow, 1) : "·") + "</td><td class='wrap'>" + m.renewTxt + "</td></tr>";
       }).join("");
   }
 

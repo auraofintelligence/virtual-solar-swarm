@@ -152,6 +152,24 @@
     return e;
   }
 
+  /* A song from the album, in a vertical phone frame. Nothing preloads until
+     the reader presses play, so a page costs only its poster image. */
+  function mountSong(elId, song) {
+    var host = document.getElementById(elId);
+    if (!host) return;
+    host.className = "song-block";
+    host.innerHTML =
+      '<div class="phone"><video controls preload="none" playsinline poster="' + song.poster + '">' +
+      '<source src="' + song.file + '" type="video/mp4">Your browser cannot play this video.</video></div>' +
+      '<div class="song-words"><h3>' + song.title + "</h3>" +
+      '<p class="song-meta">i C. infinity, from the album <em>A Protopian Gambit</em></p>' +
+      '<p class="dim small">' + song.blurb + "</p>" +
+      '<div class="song-links">' +
+      '<a class="chip" style="text-decoration:none" href="https://suno.com/playlist/5e56abcb-272b-455e-baff-6470627172ff">The album on Suno</a>' +
+      '<a class="chip" style="text-decoration:none" href="https://auraofintelligence.github.io/i-C-infinity-music-universe/index.html">The whole music universe</a>' +
+      "</div></div>";
+  }
+
   function mountChrome(activeHref) {
     var header = document.getElementById("site-header");
     if (header) {
@@ -176,7 +194,7 @@
     NAV: NAV, TIERS: TIERS, DESIGN_LIFE: DESIGN_LIFE, ENV_LABEL: ENV_LABEL, CLS_LABEL: CLS_LABEL,
     AUD_PER_USD: AUD_PER_USD,
     fmt: fmt, fmtAud: fmtAud, fmtAudFull: fmtAudFull, fmtDate: fmtDate, fmtDur: fmtDur, fmtKm: fmtKm, fmtSpeed: fmtSpeed,
-    helioOrbitOf: helioOrbitOf, tierCount: tierCount, qs: qs, el: el, mountChrome: mountChrome,
+    helioOrbitOf: helioOrbitOf, tierCount: tierCount, qs: qs, el: el, mountChrome: mountChrome, mountSong: mountSong,
     STARTING_FLEET: STARTING_FLEET, tierSizesFor: tierSizesFor, fleetTotal: fleetTotal,
     setFleet: setFleet, getFleet: function () { return fleetChoice; }
   };
