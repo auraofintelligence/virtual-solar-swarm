@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Target dossier : Virtual Solar Swarm</title>
-<meta name="description" content="Full mission dossier for one Virtual Solar Swarm target: orbit, stable orbits, launch windows, sensor fit-out and replacement cadence.">
+<meta name="description" content="Full dossier for one body: orbit, stable orbits around it, launch windows, instrument fit-out and renewal.">
 <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🛰️</text></svg>">
 <link rel="stylesheet" href="assets/style.css">
 </head>
@@ -265,20 +265,20 @@ function mountSunLive() {
     html += '<div class="card"><h3>Live right now</h3><ul class="dim small" style="display:grid; gap:.35rem; padding-left:1.1rem">' +
       '<li><a href="https://www.swpc.noaa.gov/">NOAA Space Weather Prediction Center</a>: the official forecasts, alerts and real-time solar wind from L1</li>' +
       '<li><a href="https://sdo.gsfc.nasa.gov/">NASA Solar Dynamics Observatory</a>: the Sun photographed in a dozen wavelengths, updated continuously</li>' +
-      '<li><a href="https://science.nasa.gov/mission/solar-orbiter/">ESA and NASA Solar Orbiter</a>: the mission flying over the solar poles this site keeps citing</li>' +
+      '<li><a href="https://science.nasa.gov/mission/solar-orbiter/">ESA and NASA Solar Orbiter</a>: the mission climbing toward a view over the solar poles</li>' +
       '<li><a href="https://helioviewer.org/">Helioviewer</a>: browse and stack decades of solar imagery in one viewer</li>' +
       "</ul></div>";
     html += '<div class="card"><h3>Daily watch</h3><ul class="dim small" style="display:grid; gap:.35rem; padding-left:1.1rem">' +
       '<li><a href="https://spaceweathernews.com/">Space Weather News</a>: daily independent briefings on the Sun, the field and the forecast</li>' +
       '<li><a href="https://spaceweather.com/">SpaceWeather.com</a>: long-running daily log of flares, spots and aurora</li>' +
       '<li><a href="https://www.spaceweatherlive.com/">SpaceWeatherLive</a>: live dials, archives and aurora alerts</li>' +
-      '<li><a href="https://auraofintelligence.github.io/space-weather-news/">Space Weather News, civic newsroom</a>: our own build, plain-language and local</li>' +
+      '<li><a href="https://auraofintelligence.github.io/space-weather-news/">Space Weather News, civic newsroom</a>: plain-language and local</li>' +
       "</ul></div>";
     html += '<div class="card"><h3>Data you can query</h3><ul class="dim small" style="display:grid; gap:.35rem; padding-left:1.1rem">' +
       '<li><a href="https://api.nasa.gov/">NASA Open APIs</a>: a free key, then imagery and space weather endpoints</li>' +
       '<li><a href="https://ccmc.gsfc.nasa.gov/tools/DONKI/">DONKI</a>: NASA catalogue of flares, coronal mass ejections and storms, with an API</li>' +
       '<li><a href="https://cdaweb.gsfc.nasa.gov/">CDAWeb</a>: the raw heliophysics archive, decades of field and particle data</li>' +
-      '<li><a href="https://ssd.jpl.nasa.gov/horizons/">JPL Horizons</a>: the ephemeris this site orbits should be checked against</li>' +
+      '<li><a href="https://ssd.jpl.nasa.gov/horizons/">JPL Horizons</a>: the authoritative ephemeris to check any orbit against</li>' +
       "</ul></div></div>";
     html += '<p class="small"><a href="sun-watchers.html">Everything that has ever watched the Sun, and what is being built next &rarr;</a></p>';
 
@@ -297,7 +297,7 @@ function mountSunLive() {
         '<p class="dim small mission-finding"><strong>The hard part.</strong> ' + st.hard + "</p>" +
         '<p class="small"><a href="' + st.link + '">' + st.precedent + " &rarr;</a></p></div>";
     }).join("") + "</div>";
-    html += '<p class="faint">Shares are a studio assumption, not a derived optimum: they are one opinion about how to split attention, and they are in the data file for anyone who wants to argue with them. What is not an assumption is the list itself. Every regime here has been flown, is being built, or has a published mission study behind it.</p>';
+    html += '<p class="faint">The split above is one way to divide attention, not a derived optimum, and it lives in a data file so it can be changed. The list of regimes is not a matter of opinion: every one has been flown, is being built, or has a published mission study behind it.</p>';
     html += '<p class="faint">The wilder end of the solar-cycle question, micro-novas and galactic current sheets included, is gathered separately in <a href="https://auraofintelligence.github.io/micronova-and-excursions/">Micronova and Excursions</a>: an evidence ledger rather than a verdict.</p>';
   }
 

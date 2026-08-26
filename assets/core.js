@@ -187,7 +187,7 @@
     var footer = document.getElementById("site-footer");
     if (footer) {
       footer.innerHTML =
-        '<p>A design study in the open. Every number here is a model you can pull on; nothing described on this site has been built or launched.</p>' +
+        '<p>Every number here is a model you can pull on. Nothing described on this site has been built or launched.</p>' +
         '<p>🤝🔷 A Luke × Claude build. Created by Luke Nathan Hayes (<a href="https://github.com/auraofintelligence">auraofintelligence</a>) ' +
         'and Claude (Fable 5), August 2026. Not a Codex build. · <a href="about.html">About and licence</a></p>';
     }

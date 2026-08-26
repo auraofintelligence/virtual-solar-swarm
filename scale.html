@@ -12,7 +12,7 @@
 <header id="site-header"></header>
 <main>
   <h1>The scale</h1>
-  <p class="lede">No rule fixes 200 targets, or four satellites to a picket, or 1,300 in the fleet; those are where this study started counting. On this page both the fleet total and the policy for spending it are dials in your hands. The page does the arithmetic and shows you what each setting changes; what any of it is worth is yours to weigh.</p>
+  <p class="lede">No rule fixes 200 targets, or four satellites to a picket, or 1,300 in the fleet; those are just a starting point. Here the fleet total and the policy for spending it are both yours to set. The arithmetic follows your choices; what any of it is worth is yours to weigh.</p>
 
   <h2>Your fleet</h2>
   <div class="controls">
@@ -29,7 +29,7 @@
   </div>
 
   <h2>Your allocation policy</h2>
-  <p class="dim small">How the fleet is spent is a policy, not a law of the model. These are the same knobs the study's starting design chose one way; choose them your way. <button id="reset-policy" class="chip">Reset to the starting policy</button></p>
+  <p class="dim small">How a fleet is spent is a choice, not a law of physics. Set these however you think they should be set. <button id="reset-policy" class="chip">Reset to the starting policy</button></p>
   <div class="grid cols-3">
     <div class="card"><p><label>Solar observatory <input type="range" id="p-obs" min="0" max="1500" step="10" value="100"></label> <strong id="p-obs-out"></strong></p><p class="faint">Satellites wrapped around the Sun, counted at the starting fleet.</p></div>
     <div class="card"><p><label>Swarm strength <input type="range" id="p-swarm" min="4" max="200" value="50"></label> <strong id="p-swarm-out"></strong></p><p class="faint">Satellites at each of the seven priority worlds.</p></div>
@@ -73,11 +73,11 @@
     <div class="card">
       <h3>What would it give back? The numbers to weigh:</h3>
       <dl class="kv" id="give-rows"></dl>
-      <p class="faint">The source design argues that many solar vantage points would stretch storm warnings from about an hour toward days; that claim rides on the coverage number above and is theirs to defend.</p>
+      <p class="faint">Many vantage points on the Sun are argued to stretch storm warnings from about an hour toward days. That claim rides on the coverage number above.</p>
     </div>
   </div>
 
-  <p class="faint">Scaling laws here are pinned to the starting point and are teaching-grade, like everything on this site; the finer pages (<a href="fleet.html">fleet</a>, <a href="cadence.html">cadence</a>, <a href="convoys.html">convoys</a>, <a href="network.html">network</a>) currently run at the starting point.</p>
+  <p class="faint">Scaling laws here are pinned to the starting point and are teaching-grade; the finer pages (<a href="fleet.html">fleet</a>, <a href="cadence.html">cadence</a>, <a href="convoys.html">convoys</a>, <a href="network.html">network</a>) currently run at the starting point.</p>
 </main>
 <footer id="site-footer"></footer>
 <script src="assets/astro.js"></script>

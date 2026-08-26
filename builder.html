@@ -218,7 +218,7 @@ VSS.mountChrome("builder.html");
     if (o.cls === "star")
       chk(state.mods.indexOf("qcomm") >= 0, true,
         "Quantum key channel fitted for the flagship observatory.",
-        "The solar observatory is the network's command core; the design study gives it the tamper-proof quantum key channel.");
+        "The solar observatory is the network's command core, so the tamper-proof quantum key channel belongs on it.");
 
     // ---- the engine and its tank against the destination's demands ----
     var dryKg = bus.dryKg + mass;
@@ -238,7 +238,7 @@ VSS.mountChrome("builder.html");
       if (engine.needsPower && (o.env === "outer" || o.env === "deep") && bus.powerSource !== "rtg")
         checks.push({ level: "bad", text: "This electric engine has no power out here on solar wings; pair it with the nuclear bus or choose fission-electric." });
       if (engine.id === "ntp")
-        checks.push({ level: "warn", text: "A reactor kick stage outweighs a small satellite; in this study one nuclear tug would usually carry a whole picket out and come home." });
+        checks.push({ level: "warn", text: "A reactor kick stage outweighs a small satellite; one nuclear tug would usually carry a whole picket out and come home." });
     }
 
     return { o: o, bus: bus, engine: engine, dvBought: dvBought, dvNeeded: dvNeeded, propKg: propKg, mass: mass, avgPower: avgPower, budgetPower: budgetPower, effData: effData, downlink: downlink, cost: cost, sats: sats, checks: checks };
