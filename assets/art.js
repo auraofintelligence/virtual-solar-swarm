@@ -106,9 +106,9 @@
     ctx.drawImage(tmp, Math.round(cx - half), Math.round(cy - half));
   }
 
-  /* A body we have no map of: a lit sphere under a latitude and longitude
-     grid, so its shape, spin axis and scale still read. Honest and never
-     blank: this is what we actually know about it. */
+  /* A body with no published map: a lit sphere under a latitude and longitude
+     grid, so its size, spin axis and scale still read. No surface detail is
+     generated. */
   function graticule(ctx, cx, cy, R) {
     var LAT = [-60, -30, 0, 30, 60], STEP = 30;
     function plot(pts, alphaMul, width) {
