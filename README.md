@@ -1,5 +1,27 @@
 # Virtual Solar Swarm
 
+<!-- github-organisation:start -->
+
+## Project links and history
+
+- First substantive build: 25 August 2026.
+- GitHub repository: [virtual-solar-swarm](https://github.com/auraofintelligence/virtual-solar-swarm).
+- Public site: [visit the public site](https://auraofintelligence.github.io/virtual-solar-swarm/).
+
+## Related public projects
+
+Each link below reflects an evidenced family, lineage or direct connection. This project has 5 relevant public connections.
+
+### Space-weather and cosmic research tools
+
+- [extreme-matter-atlas](https://github.com/auraofintelligence/extreme-matter-atlas) - [public page](https://auraofintelligence.github.io/extreme-matter-atlas/) - shared research architecture.
+- [gods-eye-view](https://github.com/auraofintelligence/gods-eye-view) - [public page](https://www.spatialintelligence.ai/) - shared research architecture.
+- [micronova-and-excursions](https://github.com/auraofintelligence/micronova-and-excursions) - [public page](https://auraofintelligence.github.io/micronova-and-excursions/) - shared research architecture.
+- [space-weather-news](https://github.com/auraofintelligence/space-weather-news) - [public page](https://auraofintelligence.github.io/space-weather-news/) - explicit cross-reference, shared research architecture.
+- [strange-but-true-cosmic-nexus](https://github.com/auraofintelligence/strange-but-true-cosmic-nexus) - [public page](https://auraofintelligence.github.io/strange-but-true-cosmic-nexus/) - explicit cross-reference, shared research architecture.
+
+<!-- github-organisation:end -->
+
 **Public website:** [auraofintelligence.github.io/virtual-solar-swarm](https://auraofintelligence.github.io/virtual-solar-swarm/)
 
 [Open the visual site map](https://auraofintelligence.github.io/virtual-solar-swarm/site-map.html) · [View the public repository](https://github.com/auraofintelligence/virtual-solar-swarm)
