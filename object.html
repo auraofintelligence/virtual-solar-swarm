@@ -7,6 +7,12 @@
 <meta name="description" content="Full dossier for one body: orbit, stable orbits around it, launch windows, instrument fit-out and renewal.">
 <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🛰️</text></svg>">
 <link rel="stylesheet" href="assets/style.css">
+<style id="network-portrait-style">
+.network-portrait-shell{width:min(100%,360px);margin:1.1rem auto;background:#10091b;border:1px solid #75618c;border-radius:14px;overflow:hidden}
+.network-portrait-video,video[src*="/assets/protopian-portraits/"],video:has(source[src*="/assets/protopian-portraits/"]){display:block!important;width:100%!important;max-width:360px!important;height:auto!important;min-height:0!important;max-height:none!important;aspect-ratio:9/16!important;object-fit:contain!important;margin-inline:auto!important;background:#08050e;border:0}
+.network-portrait-shell p{margin:.55rem .8rem;font-size:.86rem;line-height:1.45}.network-portrait-shell a{color:#e0c5ff;text-decoration:underline}
+.phone:has(source[src*="/assets/protopian-portraits/"]),:is(.phone-frame,.phone-screen,.song-frame,.phone-video-wrap,.phone-embed,.video-embed,.phone):has(video[src*="/assets/protopian-portraits/"]),:is(.phone-frame,.phone-screen,.song-frame,.phone-video-wrap,.phone-embed,.video-embed,.phone):has(video[src*="/assets/protopian-portraits/"]),:is(.phone-frame,.phone-screen,.song-frame,.phone-video-wrap,.phone-embed,.video-embed):has(.network-portrait-video){height:auto!important;aspect-ratio:auto!important;min-height:0!important;max-width:380px;margin-inline:auto;overflow:hidden}
+</style>
 </head>
 <body>
 <header id="site-header"></header>
@@ -354,8 +360,8 @@ function mountSunLive() {
   if (isSun) {
     VSS.mountSong("song-sun", {
       title: "Heliospheric Lantern",
-      file: "assets/music/heliospheric-lantern.mp4",
-      poster: "assets/music/heliospheric-lantern.jpg",
+      file: "https://auraofintelligence.github.io/i-C-infinity-music-universe/assets/protopian-portraits/heliospheric-lantern-portrait-web-v1.mp4",
+      poster: "https://auraofintelligence.github.io/i-C-infinity-music-universe/assets/protopian-portraits/heliospheric-lantern-portrait-cover-v1.jpg",
       blurb: "The Sun, singing for itself: a G-type flame drifting the Orion Arm, keeping the time we live by."
     });
   }
